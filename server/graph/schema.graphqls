@@ -1,0 +1,100 @@
+# A special scalar type that allows for file uploads.
+# Your GraphQL server library (like gqlgen) needs to be configured to handle this.
+scalar Upload
+
+# Represents a user of the application.
+type User {
+  id: ID!
+  username: String!
+  email: String!
+}
+
+# Contains information about storage savings due to deduplication.
+type StorageStats {
+  originalSizeBytes: Int!
+  deduplicatedSizeBytes: Int! # The actual space this file takes on disk
+  savedBytes: Int!
+  savedPercentage: Float!
+}
+
+# Represents a folder in the user's vault.
+type Folder {
+  id: ID!
+  name: String!
+  owner: User!
+  parent: Folder # A folder can be inside another folder; null if it's a root folder.
+  children: [Folder!]! # Sub-folders
+  files: [File!]! # Files within this folder
+}
+
+# Represents the user's view of a file and its metadata.
+type File {
+  id: ID!
+  filename: String!
+  owner: User!
+  sizeBytes: Int!
+  mimeType: String!
+  uploadedAt: String! # Using String for simplicity; can be a custom DateTime scalar
+  isPublic: Boolean!
+  publicShareLink: String # Null if not public
+  downloadCount: Int!
+  storage: StorageStats! # Nested object for storage details
+}
+
+# Defines the inputs for filtering files in a query.
+input FileFilterInput {
+  filename: String
+  mimeType: String
+  minSize: Int
+  maxSize: Int
+  startDate: String
+  endDate: String
+}
+
+# The entry point for all read operations.
+type Query {
+  # Get the currently authenticated user's profile.
+  me: User
+
+  # Get all files for the authenticated user, with optional filtering.
+  myFiles(filter: FileFilterInput): [File!]!
+
+  # Get a specific file by its ID.
+  file(id: ID!): File
+
+  # Get the folder structure for the authenticated user.
+  myFolders: [Folder!]!
+}
+
+# Defines the inputs for creating a new folder.
+input NewFolderInput {
+  name: String!
+  # The ID of the parent folder. If null, creates a root folder.
+  parentFolderId: ID
+}
+
+# The payload returned after a successful authentication.
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+# The entry point for all write/change operations.
+type Mutation {
+  # User management
+  register(username: String!, email: String!, password: String!): AuthPayload!
+  login(email: String!, password: String!): AuthPayload!
+
+  # File operations
+  uploadFile(file: Upload!, folderId: ID): File!
+  deleteFile(id: ID!): Boolean! # Returns true on success
+  updateFileDetails(id: ID!, newFilename: String!): File!
+
+  # Folder operations
+  createFolder(input: NewFolderInput!): Folder!
+  deleteFolder(id: ID!): Boolean!
+
+  # Sharing operations
+  shareFilePublic(id: ID!): String! # Returns the public URL
+  revokeFilePublic(id: ID!): File! # Returns the updated file object
+}

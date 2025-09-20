@@ -1,0 +1,22 @@
+# Where is your schema?
+schema:
+  - graph/schema.graphqls
+
+# Where should the generated server code go?
+exec:
+  layout: follow-schema
+  dir: graph/generated
+  package: generated
+
+# Tell gqlgen where to put the generated models
+model:
+  # The 'filename' specifies the full path where the file should be created
+  filename: graph/model/models_gen.go
+  # The 'package' is just the name of the Go package for that file
+  package: model
+
+# Where should the resolver implementations go?
+resolver:
+  layout: follow-schema
+  dir: graph
+  package: graph
