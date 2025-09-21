@@ -58,9 +58,18 @@ func (r *repository) CreatePermission(db *gorm.DB, permission *database.Permissi
 }
 
 // GetResourceByID fetches a resource by its primary key.
+// func (r *repository) GetResourceByID(db *gorm.DB, id uint) (*database.Resource, error) {
+// 	var resource database.Resource
+// 	if err := db.First(&resource, id).Error; err != nil {
+// 		return nil, err
+// 	}
+// 	return &resource, nil
+// }
+
 func (r *repository) GetResourceByID(db *gorm.DB, id uint) (*database.Resource, error) {
 	var resource database.Resource
-	if err := db.First(&resource, id).Error; err != nil {
+	// Use Preload to automatically fetch the related PhysicalFile data
+	if err := db.Preload("PhysicalFile").First(&resource, id).Error; err != nil {
 		return nil, err
 	}
 	return &resource, nil
@@ -74,7 +83,6 @@ func (r *repository) GetPhysicalFileByID(db *gorm.DB, id uint) (*database.Physic
 	}
 	return &pf, nil
 }
-
 
 // DecrementReferenceCount decreases the reference counter for a physical file.
 func (r *repository) DecrementReferenceCount(db *gorm.DB, physicalFileID uint) error {

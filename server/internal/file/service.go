@@ -5,28 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/database"
 	"gorm.io/gorm"
 )
 
 // UploadParams contains all necessary data for a file upload.
 type UploadParams struct {
-	FileHeader *multipart.FileHeader
-	OwnerID    uint
-	ParentID   *uint // Pointer to allow for root files
+	Upload   graphql.Upload
+	OwnerID  uint
+	ParentID *uint
 }
 
 // Service is the interface for file-related business logic.
 type Service interface {
-	// --- Existing Methods ---
 	UploadFile(params UploadParams) (*database.Resource, error)
-
-	// --- New Methods ---
 	DeleteFile(resourceID uint, userID uint) error
 	RenameFile(resourceID uint, userID uint, newName string) (*database.Resource, error)
 	MoveFile(resourceID uint, userID uint, newParentID *uint) (*database.Resource, error)
@@ -44,27 +41,22 @@ func NewService(repo Repository, db *gorm.DB, storagePath string) Service {
 }
 
 func (s *service) UploadFile(params UploadParams) (*database.Resource, error) {
-	// ... (previous implementation from last response)
-	// 1. Open the uploaded file
-	src, err := params.FileHeader.Open()
-	if err != nil {
-		return nil, fmt.Errorf("failed to open uploaded file: %w", err)
-	}
-	defer src.Close()
-
+	// 1. Open the uploaded file stream from the graphql.Upload object
+	src := params.Upload.File
 	// 2. Calculate the file's SHA-256 hash
+	// We need to read the file to hash it, then rewind it to save it.
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, src); err != nil {
 		return nil, fmt.Errorf("failed to hash file content: %w", err)
 	}
 	hash := fmt.Sprintf("%x", hasher.Sum(nil))
 
-	// Begin a database transaction
+	// Begin a database transaction for atomic operations
 	tx := s.db.Begin()
 	if tx.Error != nil {
 		return nil, fmt.Errorf("failed to start transaction: %w", tx.Error)
 	}
-	// Defer a rollback in case of error. It will be ignored if we commit.
+	// Defer a rollback in case of any error. It will be ignored if we commit.
 	defer tx.Rollback()
 
 	var physicalFileID uint
@@ -77,52 +69,58 @@ func (s *service) UploadFile(params UploadParams) (*database.Resource, error) {
 
 	if existingPF != nil {
 		// --- CASE A: FILE IS A DUPLICATE ---
+		// The physical file already exists, so we just increment its reference count.
 		if err := s.repo.IncrementReferenceCount(tx, existingPF.ID); err != nil {
 			return nil, fmt.Errorf("failed to increment reference count: %w", err)
 		}
 		physicalFileID = existingPF.ID
 	} else {
 		// --- CASE B: FILE IS UNIQUE ---
-		// Derive path and ensure directories exist
+		// Derive path from hash and ensure the nested directories exist.
 		filePath := s.getStoragePath(hash)
 		if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
 			return nil, fmt.Errorf("failed to create storage directories: %w", err)
 		}
 
-		// Create the new file on disk
+		// Create the new file on the disk.
 		dst, err := os.Create(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create destination file: %w", err)
 		}
 		defer dst.Close()
 
-		// Rewind the source file reader and copy content to the new location
-		src.Seek(0, 0)
+		// Rewind the source file reader to the beginning.
+		if _, err := src.Seek(0, 0); err != nil {
+			return nil, fmt.Errorf("failed to rewind file reader: %w", err)
+		}
+
+		// Copy the file content to its new permanent location on the disk.
 		if _, err := io.Copy(dst, src); err != nil {
 			return nil, fmt.Errorf("failed to save file to disk: %w", err)
 		}
 
-		// Create the physical file record in the DB
+		// Create the physical file record in the database.
 		newPF := &database.PhysicalFile{
 			FileHash:       hash,
 			FilePath:       filePath,
-			SizeBytes:      params.FileHeader.Size,
-			MimeType:       params.FileHeader.Header.Get("Content-Type"),
+			SizeBytes:      params.Upload.Size,
+			MimeType:       params.Upload.ContentType,
 			ReferenceCount: 1,
 		}
 		if err := s.repo.CreatePhysicalFile(tx, newPF); err != nil {
-			// Attempt to clean up the orphaned file on disk
+			// If DB write fails, try to clean up the orphaned file on disk.
 			os.Remove(filePath)
 			return nil, fmt.Errorf("failed to create physical file record: %w", err)
 		}
 		physicalFileID = newPF.ID
 	}
 
-	// 4. Create the logical resource for the user
+	// 4. Create the logical resource record for the user.
+	// This acts as the user's "pointer" to the physical file.
 	newResource := &database.Resource{
 		OwnerID:        params.OwnerID,
 		ParentID:       params.ParentID,
-		Name:           params.FileHeader.Filename,
+		Name:           params.Upload.Filename,
 		Type:           database.File,
 		PhysicalFileID: &physicalFileID,
 	}
@@ -130,7 +128,7 @@ func (s *service) UploadFile(params UploadParams) (*database.Resource, error) {
 		return nil, fmt.Errorf("failed to create resource record: %w", err)
 	}
 
-	// 5. Create the owner's permission record
+	// 5. Create the owner's permission record (ACL entry).
 	ownerPermission := &database.Permission{
 		ResourceID: newResource.ID,
 		UserID:     params.OwnerID,
@@ -141,14 +139,13 @@ func (s *service) UploadFile(params UploadParams) (*database.Resource, error) {
 		return nil, fmt.Errorf("failed to create owner permission: %w", err)
 	}
 
-	// If all steps succeeded, commit the transaction
+	// 6. If all steps succeeded, commit the transaction.
 	if err := tx.Commit().Error; err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return newResource, nil
+	return s.repo.GetResourceByID(s.db, newResource.ID) // Re-fetch to populate associations
 }
-
 
 // getStoragePath derives the nested storage path from a hash.
 func (s *service) getStoragePath(hash string) string {
@@ -242,7 +239,7 @@ func (s *service) MoveFile(resourceID uint, userID uint, newParentID *uint) (*da
 	if resource.OwnerID != userID {
 		return nil, errors.New("unauthorized: only the owner can move this file")
 	}
-	
+
 	// Optional: Check if the new parent folder exists and if the user has write access to it.
 	// For simplicity, we are skipping that here, but in a real system, you would add that check.
 	// if newParentID != nil { ... check permissions on newParentID ... }

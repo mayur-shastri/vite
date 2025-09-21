@@ -16,6 +16,7 @@ import (
 	"github.com/bhavyajaix/BalkanID-filevault/graph/generated"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/database"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/file"
+	"github.com/bhavyajaix/BalkanID-filevault/internal/folders"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/middleware"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/user"
 )
@@ -57,12 +58,15 @@ func main() {
 	userService := user.NewService(userRepo)
 	fileRepo := file.NewRepository(db)
 	fileService := file.NewService(fileRepo, db, storagePath)
+	foldersRepo := folders.NewRepository(db)
+	foldersService := folders.NewService(foldersRepo)
 	// 4. Inject Dependencies into the Resolver
 	// The resolver now has access to the user service.
 	resolver := &graph.Resolver{
-		DB:          db, // Keep DB for other features you'll build
-		UserService: userService,
-		FileService: fileService,
+		DB:            db, // Keep DB for other features you'll build
+		UserService:   userService,
+		FileService:   fileService,
+		FolderService: foldersService,
 	}
 
 	// --- Server Setup ---

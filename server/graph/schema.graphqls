@@ -57,6 +57,7 @@ type Folder implements Resource {
   createdAt: String!
   updatedAt: String!
   permissions: [Permission!]
+  type: String!
 
   # Folder-specific field
   # Contains all the files and sub-folders within this folder.
@@ -73,6 +74,7 @@ type File implements Resource {
   createdAt: String!
   updatedAt: String!
   permissions: [Permission!]
+  type: String!
 
   # File-specific fields
   sizeBytes: Int!
@@ -85,8 +87,11 @@ type Query {
   # Get the currently authenticated user's profile.
   me: User
 
-  # Get a single resource by its ID. Can be a file or a folder.
-  resource(id: ID!): Resource
+  # --- NEW: Specific queries for files and folders ---
+  # Get a single file by its ID.
+  file(id: ID!): File
+  # Get a single folder by its ID.
+  folder(id: ID!): Folder
 
   # Get the contents of a specific folder.
   # If folderId is null, it returns the user's root-level resources.
@@ -99,14 +104,21 @@ type Mutation {
   register(username: String!, email: String!, password: String!): AuthPayload!
   login(email: String!, password: String!): AuthPayload!
 
-  # --- Resource operations ---
+  # --- File and Folder creation ---
   uploadFile(file: Upload!, parentId: ID): File!
   createFolder(name: String!, parentId: ID): Folder!
-  renameResource(id: ID!, newName: String!): Resource!
-  deleteResource(id: ID!): Boolean!
-  moveResource(resourceId: ID!, newParentId: ID): Resource!
 
-  # --- Sharing and permissions ---
+  # --- NEW: Specific mutations for files ---
+  renameFile(id: ID!, newName: String!): File!
+  deleteFile(id: ID!): Boolean!
+  moveFile(fileId: ID!, newParentId: ID): File!
+
+  # --- NEW: Specific mutations for folders ---
+  renameFolder(id: ID!, newName: String!): Folder!
+  deleteFolder(id: ID!): Boolean!
+  moveFolder(folderId: ID!, newParentId: ID): Folder!
+
+  # --- Sharing and permissions (still generic) ---
   grantPermission(resourceId: ID!, userId: ID!, role: Role!): Resource!
   revokePermission(resourceId: ID!, userId: ID!): Resource!
 }

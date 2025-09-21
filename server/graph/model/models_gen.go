@@ -33,6 +33,7 @@ type File struct {
 	CreatedAt   string        `json:"createdAt"`
 	UpdatedAt   string        `json:"updatedAt"`
 	Permissions []*Permission `json:"permissions,omitempty"`
+	Type        string        `json:"type"`
 	SizeBytes   int           `json:"sizeBytes"`
 	MimeType    string        `json:"mimeType"`
 	Storage     *StorageStats `json:"storage"`
@@ -64,6 +65,7 @@ type Folder struct {
 	CreatedAt   string        `json:"createdAt"`
 	UpdatedAt   string        `json:"updatedAt"`
 	Permissions []*Permission `json:"permissions,omitempty"`
+	Type        string        `json:"type"`
 	Children    []Resource    `json:"children"`
 }
 

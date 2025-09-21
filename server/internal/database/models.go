@@ -2,17 +2,21 @@ package database
 
 import (
 	"time"
+
 	"gorm.io/gorm"
 )
 
 // User defines the user model
 type User struct {
-	gorm.Model            // Includes ID, CreatedAt, UpdatedAt, DeletedAt
+	gorm.Model
 	Username       string `gorm:"size:255;uniqueIndex;not null"`
 	Email          string `gorm:"size:255;uniqueIndex;not null"`
 	PasswordHash   string `gorm:"not null"`
 	StorageQuotaMB int    `gorm:"default:10;not null"`
 	Role           string `gorm:"size:50;default:'user';not null"`
+	// "Has Many" relationships for easier preloading
+	Resources   []Resource   `gorm:"foreignKey:OwnerID"`
+	Permissions []Permission `gorm:"foreignKey:UserID"`
 }
 
 // PhysicalFile represents the actual file on disk for deduplication
@@ -24,6 +28,8 @@ type PhysicalFile struct {
 	MimeType       string `gorm:"size:255;not null"`
 	ReferenceCount int    `gorm:"default:1;not null"`
 }
+
+// ResourceType defines if a resource is a file or folder.
 type ResourceType string
 
 const (
@@ -32,19 +38,19 @@ const (
 )
 
 // Resource unifies files and folders into a single table.
-// This is the core of the hierarchy.
 type Resource struct {
 	gorm.Model
-	OwnerID  uint
-	User     User         `gorm:"foreignKey:OwnerID;constraint:OnDelete:CASCADE;"`
-	ParentID *uint        // Pointer for nullable root resources
-	Parent   *Resource    `gorm:"foreignKey:ParentID;constraint:OnDelete:CASCADE;"`
-	Name     string       `gorm:"size:255;not null"`
-	Type     ResourceType `gorm:"not null"`
-
-	// File-specific fields (will be NULL for folders)
+	OwnerID        uint         `gorm:"index"` // Indexed for performance
+	User           User         `gorm:"foreignKey:OwnerID;constraint:OnDelete:CASCADE;"`
+	ParentID       *uint        `gorm:"index"` // Indexed for performance
+	Parent         *Resource    `gorm:"foreignKey:ParentID;constraint:OnDelete:CASCADE;"`
+	Name           string       `gorm:"size:255;not null"`
+	Type           ResourceType `gorm:"type:varchar(50);not null"` // Explicit type
 	PhysicalFileID *uint
 	PhysicalFile   *PhysicalFile `gorm:"foreignKey:PhysicalFileID;constraint:OnDelete:RESTRICT;"`
+	// "Has Many" relationships for easier preloading
+	Permissions []Permission `gorm:"foreignKey:ResourceID"`
+	Children    []Resource   `gorm:"foreignKey:ParentID"`
 }
 
 // RoleType defines the permission levels.
@@ -55,20 +61,17 @@ const (
 	Editor RoleType = "editor"
 )
 
-// Permission stores ONLY direct permissions granted to a user for a resource.
-// This is our Access Control List (ACL) table and replaces the old `FileShare`.
+// Permission is the Access Control List (ACL) table.
 type Permission struct {
 	ResourceID uint     `gorm:"primaryKey"`
 	UserID     uint     `gorm:"primaryKey"`
 	Resource   Resource `gorm:"foreignKey:ResourceID;constraint:OnDelete:CASCADE;"`
 	User       User     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
-	Role       RoleType `gorm:"not null"`
+	Role       RoleType `gorm:"type:varchar(50);not null"` // Explicit type
 	CreatedAt  time.Time
 }
 
-// ResourceAncestor is the Closure Table.
-// It stores all parent-child relationships to any depth, allowing for
-// extremely fast hierarchical lookups without recursive queries.
+// ResourceAncestor is the Closure Table for fast hierarchy lookups.
 type ResourceAncestor struct {
 	AncestorID   uint     `gorm:"primaryKey"`
 	Ancestor     Resource `gorm:"foreignKey:AncestorID;constraint:OnDelete:CASCADE;"`

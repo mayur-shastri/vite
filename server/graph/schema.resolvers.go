@@ -12,9 +12,57 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/bhavyajaix/BalkanID-filevault/graph/generated"
 	"github.com/bhavyajaix/BalkanID-filevault/graph/model"
+	"github.com/bhavyajaix/BalkanID-filevault/internal/database"
+	fileservice "github.com/bhavyajaix/BalkanID-filevault/internal/file"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/middleware"
 	"github.com/bhavyajaix/BalkanID-filevault/pkg/auth"
+	"github.com/bhavyajaix/BalkanID-filevault/pkg/utils"
 )
+
+func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
+	if dbRes == nil {
+		return nil, errors.New("cannot convert nil resource")
+	}
+
+	owner := &model.User{
+		ID:       fmt.Sprint(dbRes.User.ID),
+		Username: dbRes.User.Username,
+		Email:    dbRes.User.Email,
+	}
+
+	switch dbRes.Type {
+	case database.Folder:
+		return &model.Folder{
+			ID:        fmt.Sprint(dbRes.ID),
+			Name:      dbRes.Name,
+			Owner:     owner,
+			CreatedAt: dbRes.CreatedAt.String(),
+			UpdatedAt: dbRes.UpdatedAt.String(),
+			Type:      string(dbRes.Type),
+		}, nil
+	case database.File:
+		return &model.File{
+			ID:        fmt.Sprint(dbRes.ID),
+			Name:      dbRes.Name,
+			Owner:     owner,
+			CreatedAt: dbRes.CreatedAt.String(),
+			UpdatedAt: dbRes.UpdatedAt.String(),
+			Type:      string(dbRes.Type),
+			SizeBytes: int(dbRes.PhysicalFile.SizeBytes),
+			MimeType:  string(dbRes.PhysicalFile.MimeType),
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
+	}
+}
+
+func getUserIDFromContext(ctx context.Context) (uint, error) {
+	userID, ok := ctx.Value(middleware.UserContextKey).(uint)
+	if !ok {
+		return 0, errors.New("unauthorized: access denied")
+	}
+	return userID, nil
+}
 
 // Register is the resolver for the register field. (Unchanged)
 func (r *mutationResolver) Register(ctx context.Context, username string, email string, password string) (*model.AuthPayload, error) {
@@ -56,27 +104,230 @@ func (r *mutationResolver) Login(ctx context.Context, email string, password str
 
 // UploadFile is the resolver for the uploadFile field.
 func (r *mutationResolver) UploadFile(ctx context.Context, file graphql.Upload, parentID *string) (*model.File, error) {
-	panic(fmt.Errorf("not implemented: UploadFile - needs to call ResourceService.CreateFile"))
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var pID *uint
+	if parentID != nil {
+		id, err := utils.StringToUint(*parentID)
+		if err != nil {
+			return nil, errors.New("invalid parentId format")
+		}
+		pID = &id
+	}
+
+	// Simply create the params struct and pass the arguments directly
+	uploadParams := fileservice.UploadParams{
+		Upload:   file, // Pass the whole file object
+		OwnerID:  userID,
+		ParentID: pID,
+	}
+
+	dbResource, err := r.FileService.UploadFile(uploadParams)
+	if err != nil {
+		return nil, err
+	}
+
+	gqlResource, err := toGqlResource(dbResource)
+	if err != nil {
+		return nil, err
+	}
+
+	gqlFile, ok := gqlResource.(*model.File)
+	if !ok {
+		return nil, errors.New("internal error: created resource was not a file")
+	}
+
+	return gqlFile, nil
 }
 
 // CreateFolder is the resolver for the createFolder field.
 func (r *mutationResolver) CreateFolder(ctx context.Context, name string, parentID *string) (*model.Folder, error) {
-	panic(fmt.Errorf("not implemented: CreateFolder - needs to call ResourceService.CreateFolder"))
+	var pID *uint
+	if parentID != nil {
+		id, err := utils.StringToUint(*parentID)
+		if err != nil {
+			return nil, errors.New("invalid parentId")
+		}
+		pID = &id
+	}
+
+	dbFolder, err := r.FolderService.CreateFolder(ctx, name, pID)
+	if err != nil {
+		return nil, err
+	}
+
+	// We know this is a folder, so we can cast it.
+	gqlFolder, err := toGqlResource(dbFolder)
+	if err != nil {
+		return nil, err
+	}
+	return gqlFolder.(*model.Folder), nil
 }
 
-// RenameResource is the resolver for the renameResource field.
-func (r *mutationResolver) RenameResource(ctx context.Context, id string, newName string) (model.Resource, error) {
-	panic(fmt.Errorf("not implemented: RenameResource - needs to call ResourceService.Rename"))
+// RenameFile is the resolver for the renameFile field.
+func (r *mutationResolver) RenameFile(ctx context.Context, id string, newName string) (*model.File, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	resID, err := utils.StringToUint(id)
+	if err != nil {
+		return nil, errors.New("invalid id format")
+	}
+
+	dbResource, err := r.FileService.RenameFile(resID, userID, newName)
+	if err != nil {
+		return nil, err
+	}
+
+	gqlResource, err := toGqlResource(dbResource)
+	if err != nil {
+		return nil, err
+	}
+
+	gqlFile, ok := gqlResource.(*model.File)
+	if !ok {
+		return nil, errors.New("internal error: renamed resource was not a file")
+	}
+
+	return gqlFile, nil
 }
 
-// DeleteResource is the resolver for the deleteResource field.
-func (r *mutationResolver) DeleteResource(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteResource - needs to call ResourceService.Delete"))
+// DeleteFile is the resolver for the deleteFile field.
+func (r *mutationResolver) DeleteFile(ctx context.Context, id string) (bool, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	resID, err := utils.StringToUint(id)
+	if err != nil {
+		return false, errors.New("invalid id format")
+	}
+
+	err = r.FileService.DeleteFile(resID, userID)
+	return err == nil, err
 }
 
-// MoveResource is the resolver for the moveResource field.
-func (r *mutationResolver) MoveResource(ctx context.Context, resourceID string, newParentID *string) (model.Resource, error) {
-	panic(fmt.Errorf("not implemented: MoveResource - needs to call ResourceService.Move"))
+// MoveFile is the resolver for the moveFile field.
+func (r *mutationResolver) MoveFile(ctx context.Context, fileID string, newParentID *string) (*model.File, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	resID, err := utils.StringToUint(fileID)
+	if err != nil {
+		return nil, errors.New("invalid fileId format")
+	}
+
+	var parentID *uint
+	if newParentID != nil {
+		pID, err := utils.StringToUint(*newParentID)
+		if err != nil {
+			return nil, errors.New("invalid newParentId format")
+		}
+		parentID = &pID
+	}
+
+	dbResource, err := r.FileService.MoveFile(resID, userID, parentID)
+	if err != nil {
+		return nil, err
+	}
+
+	gqlResource, err := toGqlResource(dbResource)
+	if err != nil {
+		return nil, err
+	}
+
+	gqlFile, ok := gqlResource.(*model.File)
+	if !ok {
+		return nil, errors.New("internal error: moved resource was not a file")
+	}
+
+	return gqlFile, nil
+}
+
+// RenameFolder is the resolver for the renameFolder field.
+func (r *mutationResolver) RenameFolder(ctx context.Context, id string, newName string) (*model.Folder, error) {
+	// 1. Convert the string ID to a uint
+	resID, err := utils.StringToUint(id)
+	if err != nil {
+		return nil, errors.New("invalid id format")
+	}
+	// 2. Call the service to perform the business logic
+	// Note: I've corrected this to call ResourceService
+	dbResource, err := r.FolderService.RenameResource(ctx, resID, newName)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Convert the updated database model to the generic GraphQL interface
+	gqlResource, err := toGqlResource(dbResource)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. Assert that the returned resource is specifically a Folder
+	gqlFolder, ok := gqlResource.(*model.Folder)
+	if !ok {
+		// This is an internal error; your service returned a file when we expected a folder.
+		return nil, errors.New("error: expected a folder but received a different type")
+	}
+	return gqlFolder, nil
+}
+
+// DeleteFolder is the resolver for the deleteFolder field.
+func (r *mutationResolver) DeleteFolder(ctx context.Context, id string) (bool, error) {
+	resID, err := utils.StringToUint(id)
+	if err != nil {
+		return false, errors.New("invalid id format")
+	}
+	err = r.FolderService.DeleteResource(ctx, resID)
+	return err == nil, err
+}
+
+// MoveFolder is the resolver for the moveFolder field.
+func (r *mutationResolver) MoveFolder(ctx context.Context, folderID string, newParentID *string) (*model.Folder, error) {
+	// 1. Convert the required folderID
+	resID, err := utils.StringToUint(folderID)
+	if err != nil {
+		return nil, errors.New("invalid folderId format")
+	}
+
+	// 2. Handle the optional newParentID
+	var parentID *uint
+	if newParentID != nil {
+		pID, err := utils.StringToUint(*newParentID)
+		if err != nil {
+			return nil, errors.New("invalid newParentId format")
+		}
+		parentID = &pID
+	}
+
+	// 3. Call the service (Corrected to ResourceService)
+	dbResource, err := r.FolderService.MoveResource(ctx, resID, parentID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. Convert the result to the generic interface
+	gqlResource, err := toGqlResource(dbResource)
+	if err != nil {
+		return nil, err
+	}
+
+	// 5. Assert that the interface value is specifically a *model.Folder
+	gqlFolder, ok := gqlResource.(*model.Folder)
+	if !ok {
+		return nil, errors.New("error: expected a folder but received a different type")
+	}
+
+	return gqlFolder, nil
 }
 
 // GrantPermission is the resolver for the grantPermission field.
@@ -106,14 +357,40 @@ func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
 	}, nil
 }
 
-// Resource is the resolver for the resource field.
-func (r *queryResolver) Resource(ctx context.Context, id string) (model.Resource, error) {
-	panic(fmt.Errorf("not implemented: Resource - needs to call ResourceService.GetByID"))
+// File is the resolver for the file field.
+func (r *queryResolver) File(ctx context.Context, id string) (*model.File, error) {
+	panic(fmt.Errorf("not implemented: File - file"))
+}
+
+// Folder is the resolver for the folder field.
+func (r *queryResolver) Folder(ctx context.Context, id string) (*model.Folder, error) {
+	panic(fmt.Errorf("not implemented: Folder - folder"))
 }
 
 // Resources is the resolver for the resources field.
 func (r *queryResolver) Resources(ctx context.Context, folderID *string) ([]model.Resource, error) {
-	panic(fmt.Errorf("not implemented: Resources - needs to call ResourceService.GetChildren"))
+	var pID *uint
+	if folderID != nil {
+		id, err := utils.StringToUint(*folderID)
+		if err != nil {
+			return nil, errors.New("invalid folderId")
+		}
+		pID = &id
+	}
+
+	dbResources, err := r.FolderService.GetResources(ctx, pID)
+	if err != nil {
+		return nil, err
+	}
+	var gqlResources []model.Resource
+	for _, dbRes := range dbResources {
+		// Use the helper to convert each resource
+		gqlRes, err := toGqlResource(&dbRes)
+		if err == nil { // Skip resources that fail to convert
+			gqlResources = append(gqlResources, gqlRes)
+		}
+	}
+	return gqlResources, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.
@@ -132,18 +409,47 @@ type queryResolver struct{ *Resolver }
 //    it when you're done.
 //  - You have helper methods in this file. Move them out to keep these resolver files clean.
 /*
-	func (r *folderResolver) Children(ctx context.Context, obj *model.Folder) ([]model.Resource, error) {
-	// ⚠️ This is a classic N+1 problem. Use a Dataloader here!
-	// The resolver should call your ResourceService to get children for obj.ID
-	panic(fmt.Errorf("not implemented: Children - needs to call ResourceService.GetChildren"))
+	func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
+	if dbRes == nil {
+		return nil, errors.New("cannot convert nil resource")
+	}
+
+	owner := &model.User{
+		ID:       fmt.Sprint(dbRes.User.ID),
+		Username: dbRes.User.Username,
+		Email:    dbRes.User.Email,
+	}
+
+	switch dbRes.Type {
+	case database.Folder:
+		return &model.Folder{
+			ID:        fmt.Sprint(dbRes.ID),
+			Name:      dbRes.Name,
+			Owner:     owner,
+			CreatedAt: dbRes.CreatedAt.String(),
+			UpdatedAt: dbRes.UpdatedAt.String(),
+			Type:      string(dbRes.Type),
+		}, nil
+	case database.File:
+		return &model.File{
+			ID:        fmt.Sprint(dbRes.ID),
+			Name:      dbRes.Name,
+			Owner:     owner,
+			CreatedAt: dbRes.CreatedAt.String(),
+			UpdatedAt: dbRes.UpdatedAt.String(),
+			Type:      string(dbRes.Type),
+			SizeBytes: int(dbRes.PhysicalFile.SizeBytes),
+			MimeType:  string(dbRes.PhysicalFile.MimeType),
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
+	}
 }
-func (r *resourceResolver) Permissions(ctx context.Context, obj model.Resource) ([]*model.Permission, error) {
-    // This is another potential N+1 problem. Use a Dataloader!
-    // This resolver should call your PermissionService to get permissions for obj.ID()
-    panic(fmt.Errorf("not implemented: Permissions - needs to call PermissionService.GetPermissionsForResource"))
+func getUserIDFromContext(ctx context.Context) (uint, error) {
+	userID, ok := ctx.Value(middleware.UserContextKey).(uint)
+	if !ok {
+		return 0, errors.New("unauthorized: access denied")
+	}
+	return userID, nil
 }
-func (r *Resolver) Folder() generated.FolderResolver { return &folderResolver{r} }
-func (r *Resolver) Resource() generated.ResourceResolver { return &resourceResolver{r} }
-type folderResolver struct{ *Resolver }
-type resourceResolver struct { *Resolver }
 */

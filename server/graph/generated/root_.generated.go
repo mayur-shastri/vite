@@ -56,6 +56,7 @@ type ComplexityRoot struct {
 		Permissions func(childComplexity int) int
 		SizeBytes   func(childComplexity int) int
 		Storage     func(childComplexity int) int
+		Type        func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 	}
 
@@ -67,17 +68,21 @@ type ComplexityRoot struct {
 		Owner       func(childComplexity int) int
 		Parent      func(childComplexity int) int
 		Permissions func(childComplexity int) int
+		Type        func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 	}
 
 	Mutation struct {
 		CreateFolder     func(childComplexity int, name string, parentID *string) int
-		DeleteResource   func(childComplexity int, id string) int
+		DeleteFile       func(childComplexity int, id string) int
+		DeleteFolder     func(childComplexity int, id string) int
 		GrantPermission  func(childComplexity int, resourceID string, userID string, role model.Role) int
 		Login            func(childComplexity int, email string, password string) int
-		MoveResource     func(childComplexity int, resourceID string, newParentID *string) int
+		MoveFile         func(childComplexity int, fileID string, newParentID *string) int
+		MoveFolder       func(childComplexity int, folderID string, newParentID *string) int
 		Register         func(childComplexity int, username string, email string, password string) int
-		RenameResource   func(childComplexity int, id string, newName string) int
+		RenameFile       func(childComplexity int, id string, newName string) int
+		RenameFolder     func(childComplexity int, id string, newName string) int
 		RevokePermission func(childComplexity int, resourceID string, userID string) int
 		UploadFile       func(childComplexity int, file graphql.Upload, parentID *string) int
 	}
@@ -88,8 +93,9 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		File      func(childComplexity int, id string) int
+		Folder    func(childComplexity int, id string) int
 		Me        func(childComplexity int) int
-		Resource  func(childComplexity int, id string) int
 		Resources func(childComplexity int, folderID *string) int
 	}
 
@@ -203,6 +209,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.File.Storage(childComplexity), true
 
+	case "File.type":
+		if e.complexity.File.Type == nil {
+			break
+		}
+
+		return e.complexity.File.Type(childComplexity), true
+
 	case "File.updatedAt":
 		if e.complexity.File.UpdatedAt == nil {
 			break
@@ -259,6 +272,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Folder.Permissions(childComplexity), true
 
+	case "Folder.type":
+		if e.complexity.Folder.Type == nil {
+			break
+		}
+
+		return e.complexity.Folder.Type(childComplexity), true
+
 	case "Folder.updatedAt":
 		if e.complexity.Folder.UpdatedAt == nil {
 			break
@@ -278,17 +298,29 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.CreateFolder(childComplexity, args["name"].(string), args["parentId"].(*string)), true
 
-	case "Mutation.deleteResource":
-		if e.complexity.Mutation.DeleteResource == nil {
+	case "Mutation.deleteFile":
+		if e.complexity.Mutation.DeleteFile == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteResource_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_deleteFile_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeleteResource(childComplexity, args["id"].(string)), true
+		return e.complexity.Mutation.DeleteFile(childComplexity, args["id"].(string)), true
+
+	case "Mutation.deleteFolder":
+		if e.complexity.Mutation.DeleteFolder == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteFolder_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteFolder(childComplexity, args["id"].(string)), true
 
 	case "Mutation.grantPermission":
 		if e.complexity.Mutation.GrantPermission == nil {
@@ -314,17 +346,29 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.Login(childComplexity, args["email"].(string), args["password"].(string)), true
 
-	case "Mutation.moveResource":
-		if e.complexity.Mutation.MoveResource == nil {
+	case "Mutation.moveFile":
+		if e.complexity.Mutation.MoveFile == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_moveResource_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_moveFile_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.MoveResource(childComplexity, args["resourceId"].(string), args["newParentId"].(*string)), true
+		return e.complexity.Mutation.MoveFile(childComplexity, args["fileId"].(string), args["newParentId"].(*string)), true
+
+	case "Mutation.moveFolder":
+		if e.complexity.Mutation.MoveFolder == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_moveFolder_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.MoveFolder(childComplexity, args["folderId"].(string), args["newParentId"].(*string)), true
 
 	case "Mutation.register":
 		if e.complexity.Mutation.Register == nil {
@@ -338,17 +382,29 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.Register(childComplexity, args["username"].(string), args["email"].(string), args["password"].(string)), true
 
-	case "Mutation.renameResource":
-		if e.complexity.Mutation.RenameResource == nil {
+	case "Mutation.renameFile":
+		if e.complexity.Mutation.RenameFile == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_renameResource_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_renameFile_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RenameResource(childComplexity, args["id"].(string), args["newName"].(string)), true
+		return e.complexity.Mutation.RenameFile(childComplexity, args["id"].(string), args["newName"].(string)), true
+
+	case "Mutation.renameFolder":
+		if e.complexity.Mutation.RenameFolder == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_renameFolder_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RenameFolder(childComplexity, args["id"].(string), args["newName"].(string)), true
 
 	case "Mutation.revokePermission":
 		if e.complexity.Mutation.RevokePermission == nil {
@@ -388,24 +444,36 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Permission.User(childComplexity), true
 
+	case "Query.file":
+		if e.complexity.Query.File == nil {
+			break
+		}
+
+		args, err := ec.field_Query_file_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.File(childComplexity, args["id"].(string)), true
+
+	case "Query.folder":
+		if e.complexity.Query.Folder == nil {
+			break
+		}
+
+		args, err := ec.field_Query_folder_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Folder(childComplexity, args["id"].(string)), true
+
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
 			break
 		}
 
 		return e.complexity.Query.Me(childComplexity), true
-
-	case "Query.resource":
-		if e.complexity.Query.Resource == nil {
-			break
-		}
-
-		args, err := ec.field_Query_resource_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.Resource(childComplexity, args["id"].(string)), true
 
 	case "Query.resources":
 		if e.complexity.Query.Resources == nil {
@@ -631,6 +699,7 @@ type Folder implements Resource {
   createdAt: String!
   updatedAt: String!
   permissions: [Permission!]
+  type: String!
 
   # Folder-specific field
   # Contains all the files and sub-folders within this folder.
@@ -647,6 +716,7 @@ type File implements Resource {
   createdAt: String!
   updatedAt: String!
   permissions: [Permission!]
+  type: String!
 
   # File-specific fields
   sizeBytes: Int!
@@ -659,8 +729,11 @@ type Query {
   # Get the currently authenticated user's profile.
   me: User
 
-  # Get a single resource by its ID. Can be a file or a folder.
-  resource(id: ID!): Resource
+  # --- NEW: Specific queries for files and folders ---
+  # Get a single file by its ID.
+  file(id: ID!): File
+  # Get a single folder by its ID.
+  folder(id: ID!): Folder
 
   # Get the contents of a specific folder.
   # If folderId is null, it returns the user's root-level resources.
@@ -673,16 +746,24 @@ type Mutation {
   register(username: String!, email: String!, password: String!): AuthPayload!
   login(email: String!, password: String!): AuthPayload!
 
-  # --- Resource operations ---
+  # --- File and Folder creation ---
   uploadFile(file: Upload!, parentId: ID): File!
   createFolder(name: String!, parentId: ID): Folder!
-  renameResource(id: ID!, newName: String!): Resource!
-  deleteResource(id: ID!): Boolean!
-  moveResource(resourceId: ID!, newParentId: ID): Resource!
 
-  # --- Sharing and permissions ---
+  # --- NEW: Specific mutations for files ---
+  renameFile(id: ID!, newName: String!): File!
+  deleteFile(id: ID!): Boolean!
+  moveFile(fileId: ID!, newParentId: ID): File!
+
+  # --- NEW: Specific mutations for folders ---
+  renameFolder(id: ID!, newName: String!): Folder!
+  deleteFolder(id: ID!): Boolean!
+  moveFolder(folderId: ID!, newParentId: ID): Folder!
+
+  # --- Sharing and permissions (still generic) ---
   grantPermission(resourceId: ID!, userId: ID!, role: Role!): Resource!
   revokePermission(resourceId: ID!, userId: ID!): Resource!
-}`, BuiltIn: false},
+}
+`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
