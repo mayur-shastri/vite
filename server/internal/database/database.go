@@ -31,9 +31,9 @@ func Migrate(db *gorm.DB) {
 	err := db.AutoMigrate(
 		&User{},
 		&PhysicalFile{},
-		&Folder{},
-		&UserFile{},
-		&FileShare{},
+		&Resource{},
+		&Permission{},
+		&ResourceAncestor{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database: ", err)

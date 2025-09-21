@@ -39,7 +39,7 @@ func main() {
 	db := database.Connect()
 
 	// 2. Run Migrations
-	database.Migrate(db)
+	// database.Migrate(db)
 
 	// 3. Initialize Layers (Repository -> Service)
 	userRepo := user.NewRepository(db)

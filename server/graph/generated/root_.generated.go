@@ -47,44 +47,50 @@ type ComplexityRoot struct {
 	}
 
 	File struct {
-		DownloadCount   func(childComplexity int) int
-		Filename        func(childComplexity int) int
-		ID              func(childComplexity int) int
-		IsPublic        func(childComplexity int) int
-		MimeType        func(childComplexity int) int
-		Owner           func(childComplexity int) int
-		PublicShareLink func(childComplexity int) int
-		SizeBytes       func(childComplexity int) int
-		Storage         func(childComplexity int) int
-		UploadedAt      func(childComplexity int) int
+		CreatedAt   func(childComplexity int) int
+		ID          func(childComplexity int) int
+		MimeType    func(childComplexity int) int
+		Name        func(childComplexity int) int
+		Owner       func(childComplexity int) int
+		Parent      func(childComplexity int) int
+		Permissions func(childComplexity int) int
+		SizeBytes   func(childComplexity int) int
+		Storage     func(childComplexity int) int
+		UpdatedAt   func(childComplexity int) int
 	}
 
 	Folder struct {
-		Children func(childComplexity int) int
-		Files    func(childComplexity int) int
-		ID       func(childComplexity int) int
-		Name     func(childComplexity int) int
-		Owner    func(childComplexity int) int
-		Parent   func(childComplexity int) int
+		Children    func(childComplexity int) int
+		CreatedAt   func(childComplexity int) int
+		ID          func(childComplexity int) int
+		Name        func(childComplexity int) int
+		Owner       func(childComplexity int) int
+		Parent      func(childComplexity int) int
+		Permissions func(childComplexity int) int
+		UpdatedAt   func(childComplexity int) int
 	}
 
 	Mutation struct {
-		CreateFolder      func(childComplexity int, input model.NewFolderInput) int
-		DeleteFile        func(childComplexity int, id string) int
-		DeleteFolder      func(childComplexity int, id string) int
-		Login             func(childComplexity int, email string, password string) int
-		Register          func(childComplexity int, username string, email string, password string) int
-		RevokeFilePublic  func(childComplexity int, id string) int
-		ShareFilePublic   func(childComplexity int, id string) int
-		UpdateFileDetails func(childComplexity int, id string, newFilename string) int
-		UploadFile        func(childComplexity int, file graphql.Upload, folderID *string) int
+		CreateFolder     func(childComplexity int, name string, parentID *string) int
+		DeleteResource   func(childComplexity int, id string) int
+		GrantPermission  func(childComplexity int, resourceID string, userID string, role model.Role) int
+		Login            func(childComplexity int, email string, password string) int
+		MoveResource     func(childComplexity int, resourceID string, newParentID *string) int
+		Register         func(childComplexity int, username string, email string, password string) int
+		RenameResource   func(childComplexity int, id string, newName string) int
+		RevokePermission func(childComplexity int, resourceID string, userID string) int
+		UploadFile       func(childComplexity int, file graphql.Upload, parentID *string) int
+	}
+
+	Permission struct {
+		Role func(childComplexity int) int
+		User func(childComplexity int) int
 	}
 
 	Query struct {
-		File      func(childComplexity int, id string) int
 		Me        func(childComplexity int) int
-		MyFiles   func(childComplexity int, filter *model.FileFilterInput) int
-		MyFolders func(childComplexity int) int
+		Resource  func(childComplexity int, id string) int
+		Resources func(childComplexity int, folderID *string) int
 	}
 
 	StorageStats struct {
@@ -134,19 +140,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AuthPayload.User(childComplexity), true
 
-	case "File.downloadCount":
-		if e.complexity.File.DownloadCount == nil {
+	case "File.createdAt":
+		if e.complexity.File.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.File.DownloadCount(childComplexity), true
-
-	case "File.filename":
-		if e.complexity.File.Filename == nil {
-			break
-		}
-
-		return e.complexity.File.Filename(childComplexity), true
+		return e.complexity.File.CreatedAt(childComplexity), true
 
 	case "File.id":
 		if e.complexity.File.ID == nil {
@@ -155,19 +154,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.File.ID(childComplexity), true
 
-	case "File.isPublic":
-		if e.complexity.File.IsPublic == nil {
-			break
-		}
-
-		return e.complexity.File.IsPublic(childComplexity), true
-
 	case "File.mimeType":
 		if e.complexity.File.MimeType == nil {
 			break
 		}
 
 		return e.complexity.File.MimeType(childComplexity), true
+
+	case "File.name":
+		if e.complexity.File.Name == nil {
+			break
+		}
+
+		return e.complexity.File.Name(childComplexity), true
 
 	case "File.owner":
 		if e.complexity.File.Owner == nil {
@@ -176,12 +175,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.File.Owner(childComplexity), true
 
-	case "File.publicShareLink":
-		if e.complexity.File.PublicShareLink == nil {
+	case "File.parent":
+		if e.complexity.File.Parent == nil {
 			break
 		}
 
-		return e.complexity.File.PublicShareLink(childComplexity), true
+		return e.complexity.File.Parent(childComplexity), true
+
+	case "File.permissions":
+		if e.complexity.File.Permissions == nil {
+			break
+		}
+
+		return e.complexity.File.Permissions(childComplexity), true
 
 	case "File.sizeBytes":
 		if e.complexity.File.SizeBytes == nil {
@@ -197,12 +203,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.File.Storage(childComplexity), true
 
-	case "File.uploadedAt":
-		if e.complexity.File.UploadedAt == nil {
+	case "File.updatedAt":
+		if e.complexity.File.UpdatedAt == nil {
 			break
 		}
 
-		return e.complexity.File.UploadedAt(childComplexity), true
+		return e.complexity.File.UpdatedAt(childComplexity), true
 
 	case "Folder.children":
 		if e.complexity.Folder.Children == nil {
@@ -211,12 +217,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Folder.Children(childComplexity), true
 
-	case "Folder.files":
-		if e.complexity.Folder.Files == nil {
+	case "Folder.createdAt":
+		if e.complexity.Folder.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.Folder.Files(childComplexity), true
+		return e.complexity.Folder.CreatedAt(childComplexity), true
 
 	case "Folder.id":
 		if e.complexity.Folder.ID == nil {
@@ -246,6 +252,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Folder.Parent(childComplexity), true
 
+	case "Folder.permissions":
+		if e.complexity.Folder.Permissions == nil {
+			break
+		}
+
+		return e.complexity.Folder.Permissions(childComplexity), true
+
+	case "Folder.updatedAt":
+		if e.complexity.Folder.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.Folder.UpdatedAt(childComplexity), true
+
 	case "Mutation.createFolder":
 		if e.complexity.Mutation.CreateFolder == nil {
 			break
@@ -256,31 +276,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateFolder(childComplexity, args["input"].(model.NewFolderInput)), true
+		return e.complexity.Mutation.CreateFolder(childComplexity, args["name"].(string), args["parentId"].(*string)), true
 
-	case "Mutation.deleteFile":
-		if e.complexity.Mutation.DeleteFile == nil {
+	case "Mutation.deleteResource":
+		if e.complexity.Mutation.DeleteResource == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteFile_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_deleteResource_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeleteFile(childComplexity, args["id"].(string)), true
+		return e.complexity.Mutation.DeleteResource(childComplexity, args["id"].(string)), true
 
-	case "Mutation.deleteFolder":
-		if e.complexity.Mutation.DeleteFolder == nil {
+	case "Mutation.grantPermission":
+		if e.complexity.Mutation.GrantPermission == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteFolder_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_grantPermission_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeleteFolder(childComplexity, args["id"].(string)), true
+		return e.complexity.Mutation.GrantPermission(childComplexity, args["resourceId"].(string), args["userId"].(string), args["role"].(model.Role)), true
 
 	case "Mutation.login":
 		if e.complexity.Mutation.Login == nil {
@@ -294,6 +314,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.Login(childComplexity, args["email"].(string), args["password"].(string)), true
 
+	case "Mutation.moveResource":
+		if e.complexity.Mutation.MoveResource == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_moveResource_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.MoveResource(childComplexity, args["resourceId"].(string), args["newParentId"].(*string)), true
+
 	case "Mutation.register":
 		if e.complexity.Mutation.Register == nil {
 			break
@@ -306,41 +338,29 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.Register(childComplexity, args["username"].(string), args["email"].(string), args["password"].(string)), true
 
-	case "Mutation.revokeFilePublic":
-		if e.complexity.Mutation.RevokeFilePublic == nil {
+	case "Mutation.renameResource":
+		if e.complexity.Mutation.RenameResource == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_revokeFilePublic_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_renameResource_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RevokeFilePublic(childComplexity, args["id"].(string)), true
+		return e.complexity.Mutation.RenameResource(childComplexity, args["id"].(string), args["newName"].(string)), true
 
-	case "Mutation.shareFilePublic":
-		if e.complexity.Mutation.ShareFilePublic == nil {
+	case "Mutation.revokePermission":
+		if e.complexity.Mutation.RevokePermission == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_shareFilePublic_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_revokePermission_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ShareFilePublic(childComplexity, args["id"].(string)), true
-
-	case "Mutation.updateFileDetails":
-		if e.complexity.Mutation.UpdateFileDetails == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_updateFileDetails_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.UpdateFileDetails(childComplexity, args["id"].(string), args["newFilename"].(string)), true
+		return e.complexity.Mutation.RevokePermission(childComplexity, args["resourceId"].(string), args["userId"].(string)), true
 
 	case "Mutation.uploadFile":
 		if e.complexity.Mutation.UploadFile == nil {
@@ -352,19 +372,21 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UploadFile(childComplexity, args["file"].(graphql.Upload), args["folderId"].(*string)), true
+		return e.complexity.Mutation.UploadFile(childComplexity, args["file"].(graphql.Upload), args["parentId"].(*string)), true
 
-	case "Query.file":
-		if e.complexity.Query.File == nil {
+	case "Permission.role":
+		if e.complexity.Permission.Role == nil {
 			break
 		}
 
-		args, err := ec.field_Query_file_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
+		return e.complexity.Permission.Role(childComplexity), true
+
+	case "Permission.user":
+		if e.complexity.Permission.User == nil {
+			break
 		}
 
-		return e.complexity.Query.File(childComplexity, args["id"].(string)), true
+		return e.complexity.Permission.User(childComplexity), true
 
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
@@ -373,24 +395,29 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Me(childComplexity), true
 
-	case "Query.myFiles":
-		if e.complexity.Query.MyFiles == nil {
+	case "Query.resource":
+		if e.complexity.Query.Resource == nil {
 			break
 		}
 
-		args, err := ec.field_Query_myFiles_args(ctx, rawArgs)
+		args, err := ec.field_Query_resource_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.MyFiles(childComplexity, args["filter"].(*model.FileFilterInput)), true
+		return e.complexity.Query.Resource(childComplexity, args["id"].(string)), true
 
-	case "Query.myFolders":
-		if e.complexity.Query.MyFolders == nil {
+	case "Query.resources":
+		if e.complexity.Query.Resources == nil {
 			break
 		}
 
-		return e.complexity.Query.MyFolders(childComplexity), true
+		args, err := ec.field_Query_resources_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Resources(childComplexity, args["folderId"].(*string)), true
 
 	case "StorageStats.deduplicatedSizeBytes":
 		if e.complexity.StorageStats.DeduplicatedSizeBytes == nil {
@@ -448,10 +475,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
-	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
-		ec.unmarshalInputFileFilterInput,
-		ec.unmarshalInputNewFolderInput,
-	)
+	inputUnmarshalMap := graphql.BuildUnmarshalerMap()
 	first := true
 
 	switch opCtx.Operation.Operation {
@@ -549,7 +573,6 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	{Name: "../schema.graphqls", Input: `# A special scalar type that allows for file uploads.
-# Your GraphQL server library (like gqlgen) needs to be configured to handle this.
 scalar Upload
 
 # Represents a user of the application.
@@ -557,6 +580,12 @@ type User {
   id: ID!
   username: String!
   email: String!
+}
+
+# The payload returned after a successful authentication.
+type AuthPayload {
+  token: String!
+  user: User!
 }
 
 # Contains information about storage savings due to deduplication.
@@ -567,38 +596,62 @@ type StorageStats {
   savedPercentage: Float!
 }
 
-# Represents a folder in the user's vault.
-type Folder {
+# Defines the roles a user can have on a resource.
+enum Role {
+  VIEWER
+  EDITOR
+}
+
+# Shows a user's specific permission level on a resource.
+type Permission {
+  user: User!
+  role: Role!
+}
+
+# A generic interface for any item in the vault, whether a file or folder.
+# This is the core of the new, unified schema.
+interface Resource {
   id: ID!
   name: String!
   owner: User!
-  parent: Folder # A folder can be inside another folder; null if it's a root folder.
-  children: [Folder!]! # Sub-folders
-  files: [File!]! # Files within this folder
+  parent: Folder # Parent is always a folder or null if root
+  createdAt: String!
+  updatedAt: String!
+  # List of users who have explicit access to this resource.
+  permissions: [Permission!]
 }
 
-# Represents the user's view of a file and its metadata.
-type File {
+# Represents a folder, which can contain other resources.
+type Folder implements Resource {
+  # Fields from the Resource interface
   id: ID!
-  filename: String!
+  name: String!
   owner: User!
+  parent: Folder
+  createdAt: String!
+  updatedAt: String!
+  permissions: [Permission!]
+
+  # Folder-specific field
+  # Contains all the files and sub-folders within this folder.
+  children: [Resource!]!
+}
+
+# Represents a file's metadata.
+type File implements Resource {
+  # Fields from the Resource interface
+  id: ID!
+  name: String!
+  owner: User!
+  parent: Folder
+  createdAt: String!
+  updatedAt: String!
+  permissions: [Permission!]
+
+  # File-specific fields
   sizeBytes: Int!
   mimeType: String!
-  uploadedAt: String! # Using String for simplicity; can be a custom DateTime scalar
-  isPublic: Boolean!
-  publicShareLink: String # Null if not public
-  downloadCount: Int!
-  storage: StorageStats! # Nested object for storage details
-}
-
-# Defines the inputs for filtering files in a query.
-input FileFilterInput {
-  filename: String
-  mimeType: String
-  minSize: Int
-  maxSize: Int
-  startDate: String
-  endDate: String
+  storage: StorageStats!
 }
 
 # The entry point for all read operations.
@@ -606,48 +659,30 @@ type Query {
   # Get the currently authenticated user's profile.
   me: User
 
-  # Get all files for the authenticated user, with optional filtering.
-  myFiles(filter: FileFilterInput): [File!]!
+  # Get a single resource by its ID. Can be a file or a folder.
+  resource(id: ID!): Resource
 
-  # Get a specific file by its ID.
-  file(id: ID!): File
-
-  # Get the folder structure for the authenticated user.
-  myFolders: [Folder!]!
-}
-
-# Defines the inputs for creating a new folder.
-input NewFolderInput {
-  name: String!
-  # The ID of the parent folder. If null, creates a root folder.
-  parentFolderId: ID
-}
-
-# The payload returned after a successful authentication.
-type AuthPayload {
-  token: String!
-  user: User!
+  # Get the contents of a specific folder.
+  # If folderId is null, it returns the user's root-level resources.
+  resources(folderId: ID): [Resource!]!
 }
 
 # The entry point for all write/change operations.
 type Mutation {
-  # User management
+  # --- User management ---
   register(username: String!, email: String!, password: String!): AuthPayload!
   login(email: String!, password: String!): AuthPayload!
 
-  # File operations
-  uploadFile(file: Upload!, folderId: ID): File!
-  deleteFile(id: ID!): Boolean! # Returns true on success
-  updateFileDetails(id: ID!, newFilename: String!): File!
+  # --- Resource operations ---
+  uploadFile(file: Upload!, parentId: ID): File!
+  createFolder(name: String!, parentId: ID): Folder!
+  renameResource(id: ID!, newName: String!): Resource!
+  deleteResource(id: ID!): Boolean!
+  moveResource(resourceId: ID!, newParentId: ID): Resource!
 
-  # Folder operations
-  createFolder(input: NewFolderInput!): Folder!
-  deleteFolder(id: ID!): Boolean!
-
-  # Sharing operations
-  shareFilePublic(id: ID!): String! # Returns the public URL
-  revokeFilePublic(id: ID!): File! # Returns the updated file object
-}
-`, BuiltIn: false},
+  # --- Sharing and permissions ---
+  grantPermission(resourceId: ID!, userId: ID!, role: Role!): Resource!
+  revokePermission(resourceId: ID!, userId: ID!): Resource!
+}`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)

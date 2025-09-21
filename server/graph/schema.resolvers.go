@@ -16,19 +16,16 @@ import (
 	"github.com/bhavyajaix/BalkanID-filevault/pkg/auth"
 )
 
-// Register is the resolver for the register field.
+// Register is the resolver for the register field. (Unchanged)
 func (r *mutationResolver) Register(ctx context.Context, username string, email string, password string) (*model.AuthPayload, error) {
-	// Call the service to register the user
 	dbUser, err := r.UserService.Register(username, email, password)
 	if err != nil {
 		return nil, err
 	}
-	// After successful registration, log them in by generating a token
 	token, err := auth.GenerateToken(dbUser.ID)
 	if err != nil {
 		return nil, fmt.Errorf("could not generate token after registration: %w", err)
 	}
-	// Convert database user to GraphQL user model
 	gqlUser := &model.User{
 		ID:       fmt.Sprint(dbUser.ID),
 		Username: dbUser.Username,
@@ -40,21 +37,17 @@ func (r *mutationResolver) Register(ctx context.Context, username string, email 
 	}, nil
 }
 
-// Login is the resolver for the login field.
+// Login is the resolver for the login field. (Unchanged)
 func (r *mutationResolver) Login(ctx context.Context, email string, password string) (*model.AuthPayload, error) {
-	// Call the service to log the user in
 	dbUser, token, err := r.UserService.Login(email, password)
 	if err != nil {
 		return nil, err
 	}
-
-	// Convert database user to GraphQL user model
 	gqlUser := &model.User{
 		ID:       fmt.Sprint(dbUser.ID),
 		Username: dbUser.Username,
 		Email:    dbUser.Email,
 	}
-
 	return &model.AuthPayload{
 		Token: token,
 		User:  gqlUser,
@@ -62,56 +55,50 @@ func (r *mutationResolver) Login(ctx context.Context, email string, password str
 }
 
 // UploadFile is the resolver for the uploadFile field.
-func (r *mutationResolver) UploadFile(ctx context.Context, file graphql.Upload, folderID *string) (*model.File, error) {
-	panic(fmt.Errorf("not implemented: UploadFile - uploadFile"))
-}
-
-// DeleteFile is the resolver for the deleteFile field.
-func (r *mutationResolver) DeleteFile(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteFile - deleteFile"))
-}
-
-// UpdateFileDetails is the resolver for the updateFileDetails field.
-func (r *mutationResolver) UpdateFileDetails(ctx context.Context, id string, newFilename string) (*model.File, error) {
-	panic(fmt.Errorf("not implemented: UpdateFileDetails - updateFileDetails"))
+func (r *mutationResolver) UploadFile(ctx context.Context, file graphql.Upload, parentID *string) (*model.File, error) {
+	panic(fmt.Errorf("not implemented: UploadFile - needs to call ResourceService.CreateFile"))
 }
 
 // CreateFolder is the resolver for the createFolder field.
-func (r *mutationResolver) CreateFolder(ctx context.Context, input model.NewFolderInput) (*model.Folder, error) {
-	panic(fmt.Errorf("not implemented: CreateFolder - createFolder"))
+func (r *mutationResolver) CreateFolder(ctx context.Context, name string, parentID *string) (*model.Folder, error) {
+	panic(fmt.Errorf("not implemented: CreateFolder - needs to call ResourceService.CreateFolder"))
 }
 
-// DeleteFolder is the resolver for the deleteFolder field.
-func (r *mutationResolver) DeleteFolder(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteFolder - deleteFolder"))
+// RenameResource is the resolver for the renameResource field.
+func (r *mutationResolver) RenameResource(ctx context.Context, id string, newName string) (model.Resource, error) {
+	panic(fmt.Errorf("not implemented: RenameResource - needs to call ResourceService.Rename"))
 }
 
-// ShareFilePublic is the resolver for the shareFilePublic field.
-func (r *mutationResolver) ShareFilePublic(ctx context.Context, id string) (string, error) {
-	panic(fmt.Errorf("not implemented: ShareFilePublic - shareFilePublic"))
+// DeleteResource is the resolver for the deleteResource field.
+func (r *mutationResolver) DeleteResource(ctx context.Context, id string) (bool, error) {
+	panic(fmt.Errorf("not implemented: DeleteResource - needs to call ResourceService.Delete"))
 }
 
-// RevokeFilePublic is the resolver for the revokeFilePublic field.
-func (r *mutationResolver) RevokeFilePublic(ctx context.Context, id string) (*model.File, error) {
-	panic(fmt.Errorf("not implemented: RevokeFilePublic - revokeFilePublic"))
+// MoveResource is the resolver for the moveResource field.
+func (r *mutationResolver) MoveResource(ctx context.Context, resourceID string, newParentID *string) (model.Resource, error) {
+	panic(fmt.Errorf("not implemented: MoveResource - needs to call ResourceService.Move"))
 }
 
-// Me is the resolver for the me field.
+// GrantPermission is the resolver for the grantPermission field.
+func (r *mutationResolver) GrantPermission(ctx context.Context, resourceID string, userID string, role model.Role) (model.Resource, error) {
+	panic(fmt.Errorf("not implemented: GrantPermission - needs to call PermissionService.Grant"))
+}
+
+// RevokePermission is the resolver for the revokePermission field.
+func (r *mutationResolver) RevokePermission(ctx context.Context, resourceID string, userID string) (model.Resource, error) {
+	panic(fmt.Errorf("not implemented: RevokePermission - needs to call PermissionService.Revoke"))
+}
+
+// Me is the resolver for the me field. (Unchanged)
 func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
-	// 1. Get the user ID from the context.
 	userID, ok := ctx.Value(middleware.UserContextKey).(uint)
 	if !ok {
-		// If the key doesn't exist or is not a uint, the user is not authenticated.
 		return nil, errors.New("unauthorized: access denied")
 	}
-
-	// 2. Now you have the user ID, you can fetch the user's data.
-	dbUser, err := r.UserService.GetUserByID(userID) // You'll need to add GetUserByID to your service/repo
+	dbUser, err := r.UserService.GetUserByID(userID)
 	if err != nil {
 		return nil, err
 	}
-
-	// 3. Convert and return the user.
 	return &model.User{
 		ID:       fmt.Sprint(dbUser.ID),
 		Username: dbUser.Username,
@@ -119,19 +106,14 @@ func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
 	}, nil
 }
 
-// MyFiles is the resolver for the myFiles field.
-func (r *queryResolver) MyFiles(ctx context.Context, filter *model.FileFilterInput) ([]*model.File, error) {
-	panic(fmt.Errorf("not implemented: MyFiles - myFiles"))
+// Resource is the resolver for the resource field.
+func (r *queryResolver) Resource(ctx context.Context, id string) (model.Resource, error) {
+	panic(fmt.Errorf("not implemented: Resource - needs to call ResourceService.GetByID"))
 }
 
-// File is the resolver for the file field.
-func (r *queryResolver) File(ctx context.Context, id string) (*model.File, error) {
-	panic(fmt.Errorf("not implemented: File - file"))
-}
-
-// MyFolders is the resolver for the myFolders field.
-func (r *queryResolver) MyFolders(ctx context.Context) ([]*model.Folder, error) {
-	panic(fmt.Errorf("not implemented: MyFolders - myFolders"))
+// Resources is the resolver for the resources field.
+func (r *queryResolver) Resources(ctx context.Context, folderID *string) ([]model.Resource, error) {
+	panic(fmt.Errorf("not implemented: Resources - needs to call ResourceService.GetChildren"))
 }
 
 // Mutation returns generated.MutationResolver implementation.
@@ -150,7 +132,18 @@ type queryResolver struct{ *Resolver }
 //    it when you're done.
 //  - You have helper methods in this file. Move them out to keep these resolver files clean.
 /*
-	func (r *mutationResolver) UploadFilderID *string) (*model.File, error) {
-	panic(fmt.Errorf("not implemented: UploadFile - uploadFile"))
+	func (r *folderResolver) Children(ctx context.Context, obj *model.Folder) ([]model.Resource, error) {
+	// ⚠️ This is a classic N+1 problem. Use a Dataloader here!
+	// The resolver should call your ResourceService to get children for obj.ID
+	panic(fmt.Errorf("not implemented: Children - needs to call ResourceService.GetChildren"))
 }
+func (r *resourceResolver) Permissions(ctx context.Context, obj model.Resource) ([]*model.Permission, error) {
+    // This is another potential N+1 problem. Use a Dataloader!
+    // This resolver should call your PermissionService to get permissions for obj.ID()
+    panic(fmt.Errorf("not implemented: Permissions - needs to call PermissionService.GetPermissionsForResource"))
+}
+func (r *Resolver) Folder() generated.FolderResolver { return &folderResolver{r} }
+func (r *Resolver) Resource() generated.ResourceResolver { return &resourceResolver{r} }
+type folderResolver struct{ *Resolver }
+type resourceResolver struct { *Resolver }
 */

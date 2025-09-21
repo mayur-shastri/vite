@@ -2,48 +2,95 @@
 
 package model
 
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
+)
+
+type Resource interface {
+	IsResource()
+	GetID() string
+	GetName() string
+	GetOwner() *User
+	GetParent() *Folder
+	GetCreatedAt() string
+	GetUpdatedAt() string
+	GetPermissions() []*Permission
+}
+
 type AuthPayload struct {
 	Token string `json:"token"`
 	User  *User  `json:"user"`
 }
 
 type File struct {
-	ID              string        `json:"id"`
-	Filename        string        `json:"filename"`
-	Owner           *User         `json:"owner"`
-	SizeBytes       int           `json:"sizeBytes"`
-	MimeType        string        `json:"mimeType"`
-	UploadedAt      string        `json:"uploadedAt"`
-	IsPublic        bool          `json:"isPublic"`
-	PublicShareLink *string       `json:"publicShareLink,omitempty"`
-	DownloadCount   int           `json:"downloadCount"`
-	Storage         *StorageStats `json:"storage"`
+	ID          string        `json:"id"`
+	Name        string        `json:"name"`
+	Owner       *User         `json:"owner"`
+	Parent      *Folder       `json:"parent,omitempty"`
+	CreatedAt   string        `json:"createdAt"`
+	UpdatedAt   string        `json:"updatedAt"`
+	Permissions []*Permission `json:"permissions,omitempty"`
+	SizeBytes   int           `json:"sizeBytes"`
+	MimeType    string        `json:"mimeType"`
+	Storage     *StorageStats `json:"storage"`
 }
 
-type FileFilterInput struct {
-	Filename  *string `json:"filename,omitempty"`
-	MimeType  *string `json:"mimeType,omitempty"`
-	MinSize   *int    `json:"minSize,omitempty"`
-	MaxSize   *int    `json:"maxSize,omitempty"`
-	StartDate *string `json:"startDate,omitempty"`
-	EndDate   *string `json:"endDate,omitempty"`
+func (File) IsResource()               {}
+func (this File) GetID() string        { return this.ID }
+func (this File) GetName() string      { return this.Name }
+func (this File) GetOwner() *User      { return this.Owner }
+func (this File) GetParent() *Folder   { return this.Parent }
+func (this File) GetCreatedAt() string { return this.CreatedAt }
+func (this File) GetUpdatedAt() string { return this.UpdatedAt }
+func (this File) GetPermissions() []*Permission {
+	if this.Permissions == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Permission, 0, len(this.Permissions))
+	for _, concrete := range this.Permissions {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
 }
 
 type Folder struct {
-	ID       string    `json:"id"`
-	Name     string    `json:"name"`
-	Owner    *User     `json:"owner"`
-	Parent   *Folder   `json:"parent,omitempty"`
-	Children []*Folder `json:"children"`
-	Files    []*File   `json:"files"`
+	ID          string        `json:"id"`
+	Name        string        `json:"name"`
+	Owner       *User         `json:"owner"`
+	Parent      *Folder       `json:"parent,omitempty"`
+	CreatedAt   string        `json:"createdAt"`
+	UpdatedAt   string        `json:"updatedAt"`
+	Permissions []*Permission `json:"permissions,omitempty"`
+	Children    []Resource    `json:"children"`
+}
+
+func (Folder) IsResource()               {}
+func (this Folder) GetID() string        { return this.ID }
+func (this Folder) GetName() string      { return this.Name }
+func (this Folder) GetOwner() *User      { return this.Owner }
+func (this Folder) GetParent() *Folder   { return this.Parent }
+func (this Folder) GetCreatedAt() string { return this.CreatedAt }
+func (this Folder) GetUpdatedAt() string { return this.UpdatedAt }
+func (this Folder) GetPermissions() []*Permission {
+	if this.Permissions == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Permission, 0, len(this.Permissions))
+	for _, concrete := range this.Permissions {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
 }
 
 type Mutation struct {
 }
 
-type NewFolderInput struct {
-	Name           string  `json:"name"`
-	ParentFolderID *string `json:"parentFolderId,omitempty"`
+type Permission struct {
+	User *User `json:"user"`
+	Role Role  `json:"role"`
 }
 
 type Query struct {
@@ -60,4 +107,59 @@ type User struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
 	Email    string `json:"email"`
+}
+
+type Role string
+
+const (
+	RoleViewer Role = "VIEWER"
+	RoleEditor Role = "EDITOR"
+)
+
+var AllRole = []Role{
+	RoleViewer,
+	RoleEditor,
+}
+
+func (e Role) IsValid() bool {
+	switch e {
+	case RoleViewer, RoleEditor:
+		return true
+	}
+	return false
+}
+
+func (e Role) String() string {
+	return string(e)
+}
+
+func (e *Role) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Role(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Role", str)
+	}
+	return nil
+}
+
+func (e Role) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *Role) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e Role) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
