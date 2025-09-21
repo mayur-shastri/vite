@@ -1,0 +1,76 @@
+1. ## Trigger for INSERT Operations
+This function runs whenever a new file or folder is created. It copies the ancestry from its new parent and adds a self-referencing record.
+
+-- This function is called when a new resource is inserted.
+CREATE OR REPLACE FUNCTION manage_resource_ancestors_on_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- First, every resource is an ancestor of itself at depth 0.
+    INSERT INTO resource_ancestors (ancestor_id, descendant_id, depth)
+    VALUES (NEW.id, NEW.id, 0);
+
+    -- If the new resource has a parent, copy all of the parent's ancestors.
+    IF NEW.parent_id IS NOT NULL THEN
+        INSERT INTO resource_ancestors (ancestor_id, descendant_id, depth)
+        SELECT
+            p.ancestor_id,
+            NEW.id,
+            p.depth + 1
+        FROM
+            resource_ancestors AS p
+        WHERE
+            p.descendant_id = NEW.parent_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Attaching the trigger to the resources table.
+CREATE TRIGGER on_resource_insert
+AFTER INSERT ON resources
+FOR EACH ROW EXECUTE FUNCTION manage_resource_ancestors_on_insert();
+
+2. ## Trigger for UPDATE (Move) Operations
+This is the most complex trigger. It fires when a resource's parent_id is changed. It intelligently "prunes" the old branch from the hierarchy and "grafts" it onto the new parent.
+
+-- This function handles moving a resource and its entire subtree to a new parent.
+CREATE OR REPLACE FUNCTION manage_resource_ancestors_on_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- The trigger only runs if the parent_id has actually changed.
+    IF NEW.parent_id IS DISTINCT FROM OLD.parent_id THEN
+
+        -- Step 1: Prune the old branch. Delete all old ancestor paths for the moved subtree.
+        DELETE FROM resource_ancestors
+        WHERE
+            descendant_id IN (SELECT descendant_id FROM resource_ancestors WHERE ancestor_id = NEW.id)
+            AND ancestor_id NOT IN (SELECT descendant_id FROM resource_ancestors WHERE ancestor_id = NEW.id);
+
+        -- Step 2: Graft the new branch.
+        -- If the new parent is not the root (i.e., it has a parent), connect the subtree to the new ancestors.
+        IF NEW.parent_id IS NOT NULL THEN
+            INSERT INTO resource_ancestors (ancestor_id, descendant_id, depth)
+            SELECT
+                p.ancestor_id,          -- Each ancestor of the new parent
+                c.descendant_id,        -- Becomes an ancestor of each node in the moved subtree
+                p.depth + c.depth + 1   -- The new depth is the sum of the path to the new parent and the path within the subtree
+            FROM
+                resource_ancestors AS p,
+                resource_ancestors AS c
+            WHERE
+                p.descendant_id = NEW.parent_id
+                AND c.ancestor_id = NEW.id;
+        END IF;
+
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Attaching the trigger to the resources table.
+CREATE TRIGGER on_resource_update
+AFTER UPDATE ON resources
+FOR EACH ROW EXECUTE FUNCTION manage_resource_ancestors_on_update();
+
