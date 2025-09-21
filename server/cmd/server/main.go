@@ -15,6 +15,7 @@ import (
 	"github.com/bhavyajaix/BalkanID-filevault/graph"
 	"github.com/bhavyajaix/BalkanID-filevault/graph/generated"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/database"
+	"github.com/bhavyajaix/BalkanID-filevault/internal/file"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/middleware"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/user"
 )
@@ -41,15 +42,27 @@ func main() {
 	// 2. Run Migrations
 	// database.Migrate(db)
 
+	storagePath := os.Getenv("FILEVAULT_STORAGE_PATH")
+	if storagePath == "" {
+		storagePath = "./testuploads"
+		log.Printf("FILEVAULT_STORAGE_PATH not set, using default: %s", storagePath)
+	}
+
+	if err := os.MkdirAll(storagePath, os.ModePerm); err != nil {
+		log.Fatalf("could not create storage directory: %v", err)
+	}
+
 	// 3. Initialize Layers (Repository -> Service)
 	userRepo := user.NewRepository(db)
 	userService := user.NewService(userRepo)
-
+	fileRepo := file.NewRepository(db)
+	fileService := file.NewService(fileRepo, db, storagePath)
 	// 4. Inject Dependencies into the Resolver
 	// The resolver now has access to the user service.
 	resolver := &graph.Resolver{
 		DB:          db, // Keep DB for other features you'll build
 		UserService: userService,
+		FileService: fileService,
 	}
 
 	// --- Server Setup ---
