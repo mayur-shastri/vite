@@ -46,7 +46,7 @@ func (r *repository) GetChildren(parentID uint) ([]database.Resource, error) {
 // GetRoot finds all resources with no parent for a specific user.
 func (r *repository) GetRoot(ownerID uint) ([]database.Resource, error) {
 	var resources []database.Resource
-	err := r.db.Where("parent_id IS NULL AND owner_id = ?", ownerID).Find(&resources).Error
+	err := r.db.Preload("PhysicalFile").Where("parent_id IS NULL AND owner_id = ?", ownerID).Find(&resources).Error
 	return resources, err
 }
 
