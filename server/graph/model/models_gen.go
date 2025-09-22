@@ -17,6 +17,7 @@ type Resource interface {
 	GetParent() *Folder
 	GetCreatedAt() string
 	GetUpdatedAt() string
+	GetShareToken() string
 	GetPermissions() []*Permission
 }
 
@@ -34,18 +35,20 @@ type File struct {
 	UpdatedAt   string        `json:"updatedAt"`
 	Permissions []*Permission `json:"permissions,omitempty"`
 	Type        string        `json:"type"`
+	ShareToken  string        `json:"shareToken"`
 	SizeBytes   int           `json:"sizeBytes"`
 	MimeType    string        `json:"mimeType"`
 	Storage     *StorageStats `json:"storage"`
 }
 
-func (File) IsResource()               {}
-func (this File) GetID() string        { return this.ID }
-func (this File) GetName() string      { return this.Name }
-func (this File) GetOwner() *User      { return this.Owner }
-func (this File) GetParent() *Folder   { return this.Parent }
-func (this File) GetCreatedAt() string { return this.CreatedAt }
-func (this File) GetUpdatedAt() string { return this.UpdatedAt }
+func (File) IsResource()                {}
+func (this File) GetID() string         { return this.ID }
+func (this File) GetName() string       { return this.Name }
+func (this File) GetOwner() *User       { return this.Owner }
+func (this File) GetParent() *Folder    { return this.Parent }
+func (this File) GetCreatedAt() string  { return this.CreatedAt }
+func (this File) GetUpdatedAt() string  { return this.UpdatedAt }
+func (this File) GetShareToken() string { return this.ShareToken }
 func (this File) GetPermissions() []*Permission {
 	if this.Permissions == nil {
 		return nil
@@ -66,16 +69,18 @@ type Folder struct {
 	UpdatedAt   string        `json:"updatedAt"`
 	Permissions []*Permission `json:"permissions,omitempty"`
 	Type        string        `json:"type"`
+	ShareToken  string        `json:"shareToken"`
 	Children    []Resource    `json:"children"`
 }
 
-func (Folder) IsResource()               {}
-func (this Folder) GetID() string        { return this.ID }
-func (this Folder) GetName() string      { return this.Name }
-func (this Folder) GetOwner() *User      { return this.Owner }
-func (this Folder) GetParent() *Folder   { return this.Parent }
-func (this Folder) GetCreatedAt() string { return this.CreatedAt }
-func (this Folder) GetUpdatedAt() string { return this.UpdatedAt }
+func (Folder) IsResource()                {}
+func (this Folder) GetID() string         { return this.ID }
+func (this Folder) GetName() string       { return this.Name }
+func (this Folder) GetOwner() *User       { return this.Owner }
+func (this Folder) GetParent() *Folder    { return this.Parent }
+func (this Folder) GetCreatedAt() string  { return this.CreatedAt }
+func (this Folder) GetUpdatedAt() string  { return this.UpdatedAt }
+func (this Folder) GetShareToken() string { return this.ShareToken }
 func (this Folder) GetPermissions() []*Permission {
 	if this.Permissions == nil {
 		return nil

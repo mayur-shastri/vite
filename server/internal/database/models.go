@@ -9,11 +9,13 @@ import (
 // User defines the user model
 type User struct {
 	gorm.Model
-	Username       string `gorm:"size:255;uniqueIndex;not null"`
-	Email          string `gorm:"size:255;uniqueIndex;not null"`
-	PasswordHash   string `gorm:"not null"`
-	StorageQuotaMB int    `gorm:"default:10;not null"`
-	Role           string `gorm:"size:50;default:'user';not null"`
+	Username                 string `gorm:"size:255;uniqueIndex;not null"`
+	Email                    string `gorm:"size:255;uniqueIndex;not null"`
+	PasswordHash             string `gorm:"not null"`
+	StorageQuotaMB           int    `gorm:"default:10;not null"`
+	Role                     string `gorm:"size:50;default:'user';not null"`
+	StorageUsed              int    `gorm:"not null"`
+	DeduplicationStorageUsed int    `gorm:"not null"`
 	// "Has Many" relationships for easier preloading
 	Resources   []Resource   `gorm:"foreignKey:OwnerID"`
 	Permissions []Permission `gorm:"foreignKey:UserID"`
@@ -45,6 +47,7 @@ type Resource struct {
 	ParentID       *uint        `gorm:"index"` // Indexed for performance
 	Parent         *Resource    `gorm:"foreignKey:ParentID;constraint:OnDelete:CASCADE;"`
 	Name           string       `gorm:"size:255;not null"`
+	ShareToken     *string      `gorm:"size:255;uniqueIndex"`
 	Type           ResourceType `gorm:"type:varchar(50);not null"` // Explicit type
 	PhysicalFileID *uint
 	PhysicalFile   *PhysicalFile `gorm:"foreignKey:PhysicalFileID;constraint:OnDelete:RESTRICT;"`
@@ -57,8 +60,8 @@ type Resource struct {
 type RoleType string
 
 const (
-	Viewer RoleType = "viewer"
-	Editor RoleType = "editor"
+	Viewer RoleType = "VIEWER"
+	Editor RoleType = "EDITOR"
 )
 
 // Permission is the Access Control List (ACL) table.

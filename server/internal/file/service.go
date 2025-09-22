@@ -11,8 +11,17 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/database"
+	"github.com/bhavyajaix/BalkanID-filevault/internal/permission"
+	"github.com/bhavyajaix/BalkanID-filevault/pkg/utils"
 	"gorm.io/gorm"
 )
+
+type FileDownload struct {
+	Content  io.ReadCloser // The actual file stream
+	Filename string        // The original name of the file
+	MimeType string        // The content type (e.g., "image/jpeg")
+	Size     int64         // The file size in bytes
+}
 
 // UploadParams contains all necessary data for a file upload.
 type UploadParams struct {
@@ -27,17 +36,19 @@ type Service interface {
 	DeleteFile(resourceID uint, userID uint) error
 	RenameFile(resourceID uint, userID uint, newName string) (*database.Resource, error)
 	MoveFile(resourceID uint, userID uint, newParentID *uint) (*database.Resource, error)
+	GetFileByID(resourceID uint, userID uint) (*FileDownload, error)
 }
 
 type service struct {
-	repo        Repository
-	db          *gorm.DB
-	storagePath string
+	repo           Repository
+	db             *gorm.DB
+	storagePath    string
+	permissionRepo permission.Repository
 }
 
 // NewService creates a new file service.
-func NewService(repo Repository, db *gorm.DB, storagePath string) Service {
-	return &service{repo: repo, db: db, storagePath: storagePath}
+func NewService(repo Repository, db *gorm.DB, storagePath string, permissionRepo permission.Repository) Service {
+	return &service{repo: repo, db: db, storagePath: storagePath, permissionRepo: permissionRepo}
 }
 
 func (s *service) UploadFile(params UploadParams) (*database.Resource, error) {
@@ -117,12 +128,18 @@ func (s *service) UploadFile(params UploadParams) (*database.Resource, error) {
 
 	// 4. Create the logical resource record for the user.
 	// This acts as the user's "pointer" to the physical file.
+	token, err := utils.GenerateUUIDToken()
+	if err != nil {
+		return nil, fmt.Errorf("could not generate share token: %w", err)
+	}
+
 	newResource := &database.Resource{
 		OwnerID:        params.OwnerID,
 		ParentID:       params.ParentID,
 		Name:           params.Upload.Filename,
 		Type:           database.File,
 		PhysicalFileID: &physicalFileID,
+		ShareToken:     &token,
 	}
 	if err := s.repo.CreateResource(tx, newResource); err != nil {
 		return nil, fmt.Errorf("failed to create resource record: %w", err)
@@ -250,4 +267,50 @@ func (s *service) MoveFile(resourceID uint, userID uint, newParentID *uint) (*da
 	}
 
 	return resource, nil
+}
+
+func (s *service) GetFileByID(resourceID uint, userID uint) (*FileDownload, error) {
+	// 1. Fetch the resource and its associated physical file data.
+	resource, err := s.repo.GetResourceByID(s.db, resourceID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("file not found")
+		}
+		return nil, fmt.Errorf("could not retrieve resource: %w", err)
+	}
+
+	// 2. Authorize the user. Check if they have direct or inherited access.
+	_, err = s.permissionRepo.FindPermission(userID, resourceID)
+
+	if err != nil {
+		// If the error is 'record not found', it means no permission exists. Deny access.
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("access denied")
+		}
+		// Any other error is a genuine database problem.
+		return nil, fmt.Errorf("error checking permissions: %w", err)
+	}
+
+	// 3. Ensure the resource is valid and points to a file on disk.
+	if resource.PhysicalFile == nil {
+		// This indicates data inconsistency.
+		return nil, errors.New("internal server error: resource record is missing physical file data")
+	}
+
+	// 4. Open the file from the storage path.
+	fileStream, err := os.Open(resource.PhysicalFile.FilePath)
+	if err != nil {
+		// This could happen if the file was deleted from disk manually.
+		return nil, fmt.Errorf("internal server error: could not open file from storage: %w", err)
+	}
+
+	// 5. Construct the FileDownload struct with the stream and metadata.
+	download := &FileDownload{
+		Content:  fileStream, // The os.File handle implements io.ReadCloser
+		Filename: resource.Name,
+		MimeType: resource.PhysicalFile.MimeType,
+		Size:     resource.PhysicalFile.SizeBytes,
+	}
+
+	return download, nil
 }

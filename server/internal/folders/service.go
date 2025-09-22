@@ -3,9 +3,11 @@ package folders
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/bhavyajaix/BalkanID-filevault/internal/database"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/middleware"
+	"github.com/bhavyajaix/BalkanID-filevault/pkg/utils"
 )
 
 type Service interface {
@@ -45,12 +47,16 @@ func (s *service) CreateFolder(ctx context.Context, name string, parentID *uint)
 			return nil, errors.New("access denied or invalid parent folder")
 		}
 	}
-
+	token, err := utils.GenerateUUIDToken()
+	if err != nil {
+		return nil, fmt.Errorf("could not generate share token: %w", err)
+	}
 	folder := &database.Resource{
-		Name:     name,
-		OwnerID:  userID,
-		ParentID: parentID,
-		Type:     database.Folder,
+		Name:       name,
+		OwnerID:    userID,
+		ParentID:   parentID,
+		Type:       database.Folder,
+		ShareToken: &token,
 	}
 
 	err = s.repo.Create(folder)

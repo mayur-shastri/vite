@@ -55,6 +55,40 @@ func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
 		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
 	}
 }
+func toGqlPermission(dbRes *database.Resource) (model.Resource, error) {
+	if dbRes == nil {
+		return nil, errors.New("cannot convert nil resource")
+	}
+
+	owner := &model.User{
+		ID:       fmt.Sprint(dbRes.User.ID),
+		Username: dbRes.User.Username,
+		Email:    dbRes.User.Email,
+	}
+
+	switch dbRes.Type {
+	case database.Folder:
+		return &model.Folder{
+			ID:        fmt.Sprint(dbRes.ID),
+			Name:      dbRes.Name,
+			Owner:     owner,
+			CreatedAt: dbRes.CreatedAt.String(),
+			UpdatedAt: dbRes.UpdatedAt.String(),
+			Type:      string(dbRes.Type),
+		}, nil
+	case database.File:
+		return &model.File{
+			ID:        fmt.Sprint(dbRes.ID),
+			Name:      dbRes.Name,
+			Owner:     owner,
+			CreatedAt: dbRes.CreatedAt.String(),
+			UpdatedAt: dbRes.UpdatedAt.String(),
+			Type:      string(dbRes.Type),
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
+	}
+}
 
 func getUserIDFromContext(ctx context.Context) (uint, error) {
 	userID, ok := ctx.Value(middleware.UserContextKey).(uint)
@@ -331,13 +365,39 @@ func (r *mutationResolver) MoveFolder(ctx context.Context, folderID string, newP
 }
 
 // GrantPermission is the resolver for the grantPermission field.
-func (r *mutationResolver) GrantPermission(ctx context.Context, resourceID string, userID string, role model.Role) (model.Resource, error) {
-	panic(fmt.Errorf("not implemented: GrantPermission - needs to call PermissionService.Grant"))
+func (r *mutationResolver) GrantPermission(ctx context.Context, resourceID string, email string, role model.Role) (model.Resource, error) {
+	resID, err := utils.StringToUint(resourceID)
+	if err != nil {
+		return nil, errors.New("invalid resourceId format")
+	}
+
+	// Convert the GraphQL Role enum to your database RoleType string
+	dbRole := database.RoleType(role.String())
+
+	updatedResource, err := r.PermissionService.GrantPermission(ctx, resID, email, dbRole)
+	if err != nil {
+		return nil, err
+	}
+
+	return toGqlPermission(updatedResource)
 }
 
 // RevokePermission is the resolver for the revokePermission field.
-func (r *mutationResolver) RevokePermission(ctx context.Context, resourceID string, userID string) (model.Resource, error) {
-	panic(fmt.Errorf("not implemented: RevokePermission - needs to call PermissionService.Revoke"))
+func (r *mutationResolver) RevokePermission(ctx context.Context, resourceID string, email string) (model.Resource, error) {
+	// 1. Decode the string ID into a uint
+	resID, err := utils.StringToUint(resourceID)
+	if err != nil {
+		return nil, errors.New("invalid resourceId format")
+	}
+
+	// 2. Call the service to handle the business logic and database operations
+	updatedResource, err := r.PermissionService.RevokePermission(ctx, resID, email)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Encode the database model into the GraphQL model for the response
+	return toGqlPermission(updatedResource)
 }
 
 // Me is the resolver for the me field. (Unchanged)
@@ -365,6 +425,15 @@ func (r *queryResolver) File(ctx context.Context, id string) (*model.File, error
 // Folder is the resolver for the folder field.
 func (r *queryResolver) Folder(ctx context.Context, id string) (*model.Folder, error) {
 	panic(fmt.Errorf("not implemented: Folder - folder"))
+}
+
+// ResolveShareLink is the resolver for the resolveShareLink field.
+func (r *queryResolver) ResolveShareLink(ctx context.Context, token string) (model.Resource, error) {
+	dbResource, err := r.ShareService.ResolveShareLink(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	return toGqlResource(dbResource)
 }
 
 // Resources is the resolver for the resources field.
@@ -401,55 +470,3 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
-	if dbRes == nil {
-		return nil, errors.New("cannot convert nil resource")
-	}
-
-	owner := &model.User{
-		ID:       fmt.Sprint(dbRes.User.ID),
-		Username: dbRes.User.Username,
-		Email:    dbRes.User.Email,
-	}
-
-	switch dbRes.Type {
-	case database.Folder:
-		return &model.Folder{
-			ID:        fmt.Sprint(dbRes.ID),
-			Name:      dbRes.Name,
-			Owner:     owner,
-			CreatedAt: dbRes.CreatedAt.String(),
-			UpdatedAt: dbRes.UpdatedAt.String(),
-			Type:      string(dbRes.Type),
-		}, nil
-	case database.File:
-		return &model.File{
-			ID:        fmt.Sprint(dbRes.ID),
-			Name:      dbRes.Name,
-			Owner:     owner,
-			CreatedAt: dbRes.CreatedAt.String(),
-			UpdatedAt: dbRes.UpdatedAt.String(),
-			Type:      string(dbRes.Type),
-			SizeBytes: int(dbRes.PhysicalFile.SizeBytes),
-			MimeType:  string(dbRes.PhysicalFile.MimeType),
-		}, nil
-	default:
-		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
-	}
-}
-func getUserIDFromContext(ctx context.Context) (uint, error) {
-	userID, ok := ctx.Value(middleware.UserContextKey).(uint)
-	if !ok {
-		return 0, errors.New("unauthorized: access denied")
-	}
-	return userID, nil
-}
-*/

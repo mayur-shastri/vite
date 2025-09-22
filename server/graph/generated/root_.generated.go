@@ -54,6 +54,7 @@ type ComplexityRoot struct {
 		Owner       func(childComplexity int) int
 		Parent      func(childComplexity int) int
 		Permissions func(childComplexity int) int
+		ShareToken  func(childComplexity int) int
 		SizeBytes   func(childComplexity int) int
 		Storage     func(childComplexity int) int
 		Type        func(childComplexity int) int
@@ -68,6 +69,7 @@ type ComplexityRoot struct {
 		Owner       func(childComplexity int) int
 		Parent      func(childComplexity int) int
 		Permissions func(childComplexity int) int
+		ShareToken  func(childComplexity int) int
 		Type        func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 	}
@@ -76,14 +78,14 @@ type ComplexityRoot struct {
 		CreateFolder     func(childComplexity int, name string, parentID *string) int
 		DeleteFile       func(childComplexity int, id string) int
 		DeleteFolder     func(childComplexity int, id string) int
-		GrantPermission  func(childComplexity int, resourceID string, userID string, role model.Role) int
+		GrantPermission  func(childComplexity int, resourceID string, email string, role model.Role) int
 		Login            func(childComplexity int, email string, password string) int
 		MoveFile         func(childComplexity int, fileID string, newParentID *string) int
 		MoveFolder       func(childComplexity int, folderID string, newParentID *string) int
 		Register         func(childComplexity int, username string, email string, password string) int
 		RenameFile       func(childComplexity int, id string, newName string) int
 		RenameFolder     func(childComplexity int, id string, newName string) int
-		RevokePermission func(childComplexity int, resourceID string, userID string) int
+		RevokePermission func(childComplexity int, resourceID string, email string) int
 		UploadFile       func(childComplexity int, file graphql.Upload, parentID *string) int
 	}
 
@@ -93,10 +95,11 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		File      func(childComplexity int, id string) int
-		Folder    func(childComplexity int, id string) int
-		Me        func(childComplexity int) int
-		Resources func(childComplexity int, folderID *string) int
+		File             func(childComplexity int, id string) int
+		Folder           func(childComplexity int, id string) int
+		Me               func(childComplexity int) int
+		ResolveShareLink func(childComplexity int, token string) int
+		Resources        func(childComplexity int, folderID *string) int
 	}
 
 	StorageStats struct {
@@ -195,6 +198,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.File.Permissions(childComplexity), true
 
+	case "File.shareToken":
+		if e.complexity.File.ShareToken == nil {
+			break
+		}
+
+		return e.complexity.File.ShareToken(childComplexity), true
+
 	case "File.sizeBytes":
 		if e.complexity.File.SizeBytes == nil {
 			break
@@ -272,6 +282,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Folder.Permissions(childComplexity), true
 
+	case "Folder.shareToken":
+		if e.complexity.Folder.ShareToken == nil {
+			break
+		}
+
+		return e.complexity.Folder.ShareToken(childComplexity), true
+
 	case "Folder.type":
 		if e.complexity.Folder.Type == nil {
 			break
@@ -332,7 +349,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.GrantPermission(childComplexity, args["resourceId"].(string), args["userId"].(string), args["role"].(model.Role)), true
+		return e.complexity.Mutation.GrantPermission(childComplexity, args["resourceId"].(string), args["email"].(string), args["role"].(model.Role)), true
 
 	case "Mutation.login":
 		if e.complexity.Mutation.Login == nil {
@@ -416,7 +433,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RevokePermission(childComplexity, args["resourceId"].(string), args["userId"].(string)), true
+		return e.complexity.Mutation.RevokePermission(childComplexity, args["resourceId"].(string), args["email"].(string)), true
 
 	case "Mutation.uploadFile":
 		if e.complexity.Mutation.UploadFile == nil {
@@ -474,6 +491,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Me(childComplexity), true
+
+	case "Query.resolveShareLink":
+		if e.complexity.Query.ResolveShareLink == nil {
+			break
+		}
+
+		args, err := ec.field_Query_resolveShareLink_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ResolveShareLink(childComplexity, args["token"].(string)), true
 
 	case "Query.resources":
 		if e.complexity.Query.Resources == nil {
@@ -685,6 +714,7 @@ interface Resource {
   parent: Folder # Parent is always a folder or null if root
   createdAt: String!
   updatedAt: String!
+  shareToken: String!
   # List of users who have explicit access to this resource.
   permissions: [Permission!]
 }
@@ -700,6 +730,7 @@ type Folder implements Resource {
   updatedAt: String!
   permissions: [Permission!]
   type: String!
+  shareToken: String!
 
   # Folder-specific field
   # Contains all the files and sub-folders within this folder.
@@ -717,6 +748,7 @@ type File implements Resource {
   updatedAt: String!
   permissions: [Permission!]
   type: String!
+  shareToken: String!
 
   # File-specific fields
   sizeBytes: Int!
@@ -734,7 +766,8 @@ type Query {
   file(id: ID!): File
   # Get a single folder by its ID.
   folder(id: ID!): Folder
-
+  # NEW: Resolves a share token to a resource, performing an auth check.
+  resolveShareLink(token: String!): Resource
   # Get the contents of a specific folder.
   # If folderId is null, it returns the user's root-level resources.
   resources(folderId: ID): [Resource!]!
@@ -761,8 +794,8 @@ type Mutation {
   moveFolder(folderId: ID!, newParentId: ID): Folder!
 
   # --- Sharing and permissions (still generic) ---
-  grantPermission(resourceId: ID!, userId: ID!, role: Role!): Resource!
-  revokePermission(resourceId: ID!, userId: ID!): Resource!
+  grantPermission(resourceId: ID!, email: String!, role: Role!): Resource!
+  revokePermission(resourceId: ID!, email: String!): Resource!
 }
 `, BuiltIn: false},
 }

@@ -3,6 +3,8 @@ package utils
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/google/uuid"
 )
 
 func StringToUint(s string) (uint, error) {
@@ -18,4 +20,12 @@ func StringToUint(s string) (uint, error) {
 	}
 
 	return uint(i), nil
+}
+
+func GenerateUUIDToken() (string, error) {
+	token, err := uuid.NewRandom()
+	if err != nil {
+		return "", err
+	}
+	return token.String(), nil
 }

@@ -18,6 +18,8 @@ import (
 	"github.com/bhavyajaix/BalkanID-filevault/internal/file"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/folders"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/middleware"
+	"github.com/bhavyajaix/BalkanID-filevault/internal/permission"
+	"github.com/bhavyajaix/BalkanID-filevault/internal/share"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/user"
 )
 
@@ -41,7 +43,7 @@ func main() {
 	db := database.Connect()
 
 	// 2. Run Migrations
-	// database.Migrate(db)
+	database.Migrate(db)
 
 	storagePath := os.Getenv("FILEVAULT_STORAGE_PATH")
 	if storagePath == "" {
@@ -57,16 +59,22 @@ func main() {
 	userRepo := user.NewRepository(db)
 	userService := user.NewService(userRepo)
 	fileRepo := file.NewRepository(db)
-	fileService := file.NewService(fileRepo, db, storagePath)
+	permissionRepo := permission.NewRepository(db)
 	foldersRepo := folders.NewRepository(db)
 	foldersService := folders.NewService(foldersRepo)
+	permissionService := permission.NewService(permissionRepo, foldersRepo, userRepo)
+	fileService := file.NewService(fileRepo, db, storagePath, permissionRepo)
+	shareRepo := share.NewRepository(db)
+	shareService := share.NewService(shareRepo, foldersRepo, fileRepo, db)
 	// 4. Inject Dependencies into the Resolver
 	// The resolver now has access to the user service.
 	resolver := &graph.Resolver{
-		DB:            db, // Keep DB for other features you'll build
-		UserService:   userService,
-		FileService:   fileService,
-		FolderService: foldersService,
+		DB:                db, // Keep DB for other features you'll build
+		UserService:       userService,
+		FileService:       fileService,
+		FolderService:     foldersService,
+		PermissionService: permissionService,
+		ShareService:      shareService,
 	}
 
 	// --- Server Setup ---

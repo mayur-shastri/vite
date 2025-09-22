@@ -43,6 +43,7 @@ interface Resource {
   parent: Folder # Parent is always a folder or null if root
   createdAt: String!
   updatedAt: String!
+  shareToken: String!
   # List of users who have explicit access to this resource.
   permissions: [Permission!]
 }
@@ -58,6 +59,7 @@ type Folder implements Resource {
   updatedAt: String!
   permissions: [Permission!]
   type: String!
+  shareToken: String!
 
   # Folder-specific field
   # Contains all the files and sub-folders within this folder.
@@ -75,6 +77,7 @@ type File implements Resource {
   updatedAt: String!
   permissions: [Permission!]
   type: String!
+  shareToken: String!
 
   # File-specific fields
   sizeBytes: Int!
@@ -92,7 +95,8 @@ type Query {
   file(id: ID!): File
   # Get a single folder by its ID.
   folder(id: ID!): Folder
-
+  # NEW: Resolves a share token to a resource, performing an auth check.
+  resolveShareLink(token: String!): Resource
   # Get the contents of a specific folder.
   # If folderId is null, it returns the user's root-level resources.
   resources(folderId: ID): [Resource!]!
@@ -119,6 +123,6 @@ type Mutation {
   moveFolder(folderId: ID!, newParentId: ID): Folder!
 
   # --- Sharing and permissions (still generic) ---
-  grantPermission(resourceId: ID!, userId: ID!, role: Role!): Resource!
-  revokePermission(resourceId: ID!, userId: ID!): Resource!
+  grantPermission(resourceId: ID!, email: String!, role: Role!): Resource!
+  revokePermission(resourceId: ID!, email: String!): Resource!
 }
