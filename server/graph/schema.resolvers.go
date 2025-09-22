@@ -100,6 +100,7 @@ func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
 			UpdatedAt:  dbRes.UpdatedAt.String(),
 			ShareToken: shareToken,
 			Children:   gqlChildren,
+			Type:       string(dbRes.Type),
 		}, nil
 
 	case database.File:
