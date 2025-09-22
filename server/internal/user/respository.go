@@ -11,6 +11,8 @@ type Repository interface {
 	CreateUser(user *database.User) error
 	GetUserByID(id uint) (*database.User, error)
 	GetUserByEmail(email string) (*database.User, error)
+	IncrementStorageUsed(db *gorm.DB, userID uint, size int64) error
+	IncrementBothStorageTypes(db *gorm.DB, userID uint, size int64) error
 }
 
 type repository struct {
@@ -42,4 +44,18 @@ func (r *repository) GetUserByID(id uint) (*database.User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *repository) IncrementStorageUsed(db *gorm.DB, userID uint, size int64) error {
+	return db.Model(&database.User{}).Where("id = ?", userID).UpdateColumn(
+		"storage_used", gorm.Expr("storage_used + ?", size),
+	).Error
+}
+
+// IncrementBothStorageTypes adds to both logical and physical (deduplicated) storage.
+func (r *repository) IncrementBothStorageTypes(db *gorm.DB, userID uint, size int64) error {
+	return db.Model(&database.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+		"storage_used":               gorm.Expr("storage_used + ?", size),
+		"deduplication_storage_used": gorm.Expr("deduplication_storage_used + ?", size),
+	}).Error
 }

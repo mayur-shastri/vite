@@ -83,7 +83,7 @@ func main() {
 	foldersRepo := folders.NewRepository(db)
 	foldersService := folders.NewService(foldersRepo)
 	permissionService := permission.NewService(permissionRepo, foldersRepo, userRepo)
-	fileService := file.NewService(fileRepo, db, storagePath, permissionRepo)
+	fileService := file.NewService(fileRepo, userRepo, db, storagePath, permissionRepo)
 	shareRepo := share.NewRepository(db)
 	shareService := share.NewService(shareRepo, foldersRepo, fileRepo, db)
 	tagRepo := tag.NewTagRepository(db)

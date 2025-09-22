@@ -39,14 +39,14 @@ func (r *repository) GetByID(id uint) (*database.Resource, error) {
 func (r *repository) GetChildren(parentID uint) ([]database.Resource, error) {
 	var children []database.Resource
 	// Add .Preload("PhysicalFile") to fetch the associated physical file for any children that are files.
-	err := r.db.Preload("PhysicalFile").Where("parent_id = ?", parentID).Find(&children).Error
+	err := r.db.Preload("User").Preload("PhysicalFile").Where("parent_id = ?", parentID).Find(&children).Error
 	return children, err
 }
 
 // GetRoot finds all resources with no parent for a specific user.
 func (r *repository) GetRoot(ownerID uint) ([]database.Resource, error) {
 	var resources []database.Resource
-	err := r.db.Preload("PhysicalFile").Where("parent_id IS NULL AND owner_id = ?", ownerID).Find(&resources).Error
+	err := r.db.Preload("User").Preload("PhysicalFile").Where("parent_id IS NULL AND owner_id = ?", ownerID).Find(&resources).Error
 	return resources, err
 }
 

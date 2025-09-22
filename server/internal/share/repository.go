@@ -37,14 +37,14 @@ func (r *repository) FindResourceByTokenAndUserAccess(ctx context.Context, token
 	var resource database.Resource
 	userID, _ := getUserIDFromContext(ctx)
 	if err := r.db.WithContext(ctx).
-		Preload("PhysicalFile"). // ✅ Preload physical file metadata
+		Preload("PhysicalFile").
 		Where("share_token = ?", token).
 		First(&resource).Error; err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("share link not found or invalid")
 		}
-		return nil, err // Other database error
+		return nil, err
 	}
 
 	// 2. Check for direct permission on the resource itself

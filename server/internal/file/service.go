@@ -12,6 +12,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/database"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/permission"
+	"github.com/bhavyajaix/BalkanID-filevault/internal/user"
 	"github.com/bhavyajaix/BalkanID-filevault/pkg/utils"
 	"gorm.io/gorm"
 )
@@ -42,13 +43,14 @@ type Service interface {
 type service struct {
 	repo           Repository
 	db             *gorm.DB
+	userRepo       user.Repository
 	storagePath    string
 	permissionRepo permission.Repository
 }
 
 // NewService creates a new file service.
-func NewService(repo Repository, db *gorm.DB, storagePath string, permissionRepo permission.Repository) Service {
-	return &service{repo: repo, db: db, storagePath: storagePath, permissionRepo: permissionRepo}
+func NewService(repo Repository, userRepo user.Repository, db *gorm.DB, storagePath string, permissionRepo permission.Repository) Service {
+	return &service{repo: repo, userRepo: userRepo, db: db, storagePath: storagePath, permissionRepo: permissionRepo}
 }
 
 func (s *service) UploadFile(params UploadParams) (*database.Resource, error) {
@@ -83,6 +85,9 @@ func (s *service) UploadFile(params UploadParams) (*database.Resource, error) {
 		// The physical file already exists, so we just increment its reference count.
 		if err := s.repo.IncrementReferenceCount(tx, existingPF.ID); err != nil {
 			return nil, fmt.Errorf("failed to increment reference count: %w", err)
+		}
+		if err := s.userRepo.IncrementStorageUsed(tx, params.OwnerID, params.Upload.Size); err != nil {
+			return nil, fmt.Errorf("failed to update user storage: %w", err)
 		}
 		physicalFileID = existingPF.ID
 	} else {
@@ -122,6 +127,10 @@ func (s *service) UploadFile(params UploadParams) (*database.Resource, error) {
 			// If DB write fails, try to clean up the orphaned file on disk.
 			os.Remove(filePath)
 			return nil, fmt.Errorf("failed to create physical file record: %w", err)
+		}
+		if err := s.userRepo.IncrementBothStorageTypes(tx, params.OwnerID, params.Upload.Size); err != nil {
+			os.Remove(filePath) // Also clean up the file if this fails
+			return nil, fmt.Errorf("failed to update user storage: %w", err)
 		}
 		physicalFileID = newPF.ID
 	}

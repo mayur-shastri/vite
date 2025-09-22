@@ -132,8 +132,8 @@ type Query {
   # limit and offset are for pagination
   # e.g - first page shows first 25 items, 2nd page shows next 25, and so on..
   searchResources(
-    filters: SearchFilters!, 
-    offset: Int = 0, 
+    filters: SearchFilters!
+    offset: Int = 0
     limit: Int = 25
   ): [Resource!]!
 }
@@ -165,5 +165,4 @@ type Mutation {
   # --- Tagging Files and Folders for efficient search
   addTagToResource(resourceID: ID!, tagName: String!): Resource!
   removeTagFromResource(resourceID: ID!, tagID: ID!): Resource!
-
 }
