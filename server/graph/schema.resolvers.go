@@ -70,21 +70,23 @@ func toGqlPermission(dbRes *database.Resource) (model.Resource, error) {
 	switch dbRes.Type {
 	case database.Folder:
 		return &model.Folder{
-			ID:        fmt.Sprint(dbRes.ID),
-			Name:      dbRes.Name,
-			Owner:     owner,
-			CreatedAt: dbRes.CreatedAt.String(),
-			UpdatedAt: dbRes.UpdatedAt.String(),
-			Type:      string(dbRes.Type),
+			ID:         fmt.Sprint(dbRes.ID),
+			Name:       dbRes.Name,
+			Owner:      owner,
+			CreatedAt:  dbRes.CreatedAt.String(),
+			UpdatedAt:  dbRes.UpdatedAt.String(),
+			Type:       string(dbRes.Type),
+			ShareToken: string(*dbRes.ShareToken),
 		}, nil
 	case database.File:
 		return &model.File{
-			ID:        fmt.Sprint(dbRes.ID),
-			Name:      dbRes.Name,
-			Owner:     owner,
-			CreatedAt: dbRes.CreatedAt.String(),
-			UpdatedAt: dbRes.UpdatedAt.String(),
-			Type:      string(dbRes.Type),
+			ID:         fmt.Sprint(dbRes.ID),
+			Name:       dbRes.Name,
+			Owner:      owner,
+			CreatedAt:  dbRes.CreatedAt.String(),
+			UpdatedAt:  dbRes.UpdatedAt.String(),
+			Type:       string(dbRes.Type),
+			ShareToken: string(*dbRes.ShareToken),
 		}, nil
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)

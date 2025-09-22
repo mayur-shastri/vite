@@ -44,7 +44,7 @@ func main() {
 	db := database.Connect()
 
 	// 2. Run Migrations
-	database.Migrate(db)
+	// database.Migrate(db)
 
 	storagePath := os.Getenv("FILEVAULT_STORAGE_PATH")
 	if storagePath == "" {
