@@ -5,9 +5,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/didip/tollbooth/v6"
+	"github.com/didip/tollbooth/v6/limiter"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
@@ -27,6 +30,20 @@ import (
 )
 
 const defaultPort = "8080"
+
+func createRateLimiter() func(http.Handler) http.Handler {
+	lmt := tollbooth.NewLimiter(2, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour})
+
+	lmt.SetMessage("You have reached the maximum request limit.")
+	lmt.SetStatusCode(http.StatusTooManyRequests)
+
+	// Return a function that satisfies the middleware interface.
+	return func(next http.Handler) http.Handler {
+		// tollbooth.LimitHandler serves the 429 response if the limit is exceeded,
+		// otherwise, it calls the 'next' handler in the chain.
+		return tollbooth.LimitHandler(lmt, next)
+	}
+}
 
 func main() {
 	// Load .env file
@@ -97,6 +114,8 @@ func main() {
 		AllowCredentials: true,
 	})
 	router.Use(corsMiddleware.Handler)
+
+	router.Use(createRateLimiter())
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
 	authedSrv := middleware.AuthMiddleware(srv)
