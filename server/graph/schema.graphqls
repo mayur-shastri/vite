@@ -116,6 +116,13 @@ input SearchFilters {
   uploaderName: String
 }
 
+# A new type to group resources by their owner for admin views.
+type UserResources {
+  ownerId: ID!
+  ownerUsername: String!
+  resources: [Resource!]!
+}
+
 # The entry point for all read operations.
 type Query {
   # Get the currently authenticated user's profile.
@@ -140,7 +147,7 @@ type Query {
     limit: Int = 25
   ): [Resource!]!
   #Admin functionality to view all resources by users
-  allResources: [Resource!]!
+  allResources: [UserResources!]!
 }
 
 # The entry point for all write/change operations.

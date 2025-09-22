@@ -161,6 +161,12 @@ type User struct {
 	DeduplicationStorageUsed int    `json:"DeduplicationStorageUsed"`
 }
 
+type UserResources struct {
+	OwnerID       string     `json:"ownerId"`
+	OwnerUsername string     `json:"ownerUsername"`
+	Resources     []Resource `json:"resources"`
+}
+
 type Role string
 
 const (

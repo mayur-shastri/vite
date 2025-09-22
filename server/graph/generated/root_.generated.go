@@ -130,6 +130,12 @@ type ComplexityRoot struct {
 		StorageUsed              func(childComplexity int) int
 		Username                 func(childComplexity int) int
 	}
+
+	UserResources struct {
+		OwnerID       func(childComplexity int) int
+		OwnerUsername func(childComplexity int) int
+		Resources     func(childComplexity int) int
+	}
 }
 
 type executableSchema struct {
@@ -687,6 +693,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.User.Username(childComplexity), true
 
+	case "UserResources.ownerId":
+		if e.complexity.UserResources.OwnerID == nil {
+			break
+		}
+
+		return e.complexity.UserResources.OwnerID(childComplexity), true
+
+	case "UserResources.ownerUsername":
+		if e.complexity.UserResources.OwnerUsername == nil {
+			break
+		}
+
+		return e.complexity.UserResources.OwnerUsername(childComplexity), true
+
+	case "UserResources.resources":
+		if e.complexity.UserResources.Resources == nil {
+			break
+		}
+
+		return e.complexity.UserResources.Resources(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -911,6 +938,13 @@ input SearchFilters {
   uploaderName: String
 }
 
+# A new type to group resources by their owner for admin views.
+type UserResources {
+  ownerId: ID!
+  ownerUsername: String!
+  resources: [Resource!]!
+}
+
 # The entry point for all read operations.
 type Query {
   # Get the currently authenticated user's profile.
@@ -935,7 +969,7 @@ type Query {
     limit: Int = 25
   ): [Resource!]!
   #Admin functionality to view all resources by users
-  allResources: [Resource!]!
+  allResources: [UserResources!]!
 }
 
 # The entry point for all write/change operations.
