@@ -6,6 +6,9 @@ type User {
   id: ID!
   username: String!
   email: String!
+  Role: String!
+  StorageUsed: Int!
+  DeduplicationStorageUsed: Int!
 }
 
 # The payload returned after a successful authentication.
@@ -136,6 +139,8 @@ type Query {
     offset: Int = 0
     limit: Int = 25
   ): [Resource!]!
+  #Admin functionality to view all resources by users
+  allResources: [Resource!]!
 }
 
 # The entry point for all write/change operations.

@@ -6,6 +6,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// RoleAdmin defines the string identifier for an administrator user.
+const RoleAdmin = "admin"
+
 // User defines the user model
 type User struct {
 	gorm.Model

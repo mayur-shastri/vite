@@ -69,7 +69,7 @@ func (r *repository) CreatePermission(db *gorm.DB, permission *database.Permissi
 func (r *repository) GetResourceByID(db *gorm.DB, id uint) (*database.Resource, error) {
 	var resource database.Resource
 	// Use Preload to automatically fetch the related PhysicalFile data
-	if err := db.Preload("PhysicalFile").First(&resource, id).Error; err != nil {
+	if err := db.Preload("PhysicalFile").Preload("User").First(&resource, id).Error; err != nil {
 		return nil, err
 	}
 	return &resource, nil

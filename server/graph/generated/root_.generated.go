@@ -99,6 +99,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		AllResources     func(childComplexity int) int
 		File             func(childComplexity int, id string) int
 		Folder           func(childComplexity int, id string) int
 		Me               func(childComplexity int) int
@@ -122,9 +123,12 @@ type ComplexityRoot struct {
 	}
 
 	User struct {
-		Email    func(childComplexity int) int
-		ID       func(childComplexity int) int
-		Username func(childComplexity int) int
+		DeduplicationStorageUsed func(childComplexity int) int
+		Email                    func(childComplexity int) int
+		ID                       func(childComplexity int) int
+		Role                     func(childComplexity int) int
+		StorageUsed              func(childComplexity int) int
+		Username                 func(childComplexity int) int
 	}
 }
 
@@ -511,6 +515,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Permission.User(childComplexity), true
 
+	case "Query.allResources":
+		if e.complexity.Query.AllResources == nil {
+			break
+		}
+
+		return e.complexity.Query.AllResources(childComplexity), true
+
 	case "Query.file":
 		if e.complexity.Query.File == nil {
 			break
@@ -634,6 +645,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Tag.UpdatedAt(childComplexity), true
 
+	case "User.DeduplicationStorageUsed":
+		if e.complexity.User.DeduplicationStorageUsed == nil {
+			break
+		}
+
+		return e.complexity.User.DeduplicationStorageUsed(childComplexity), true
+
 	case "User.email":
 		if e.complexity.User.Email == nil {
 			break
@@ -647,6 +665,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.User.ID(childComplexity), true
+
+	case "User.Role":
+		if e.complexity.User.Role == nil {
+			break
+		}
+
+		return e.complexity.User.Role(childComplexity), true
+
+	case "User.StorageUsed":
+		if e.complexity.User.StorageUsed == nil {
+			break
+		}
+
+		return e.complexity.User.StorageUsed(childComplexity), true
 
 	case "User.username":
 		if e.complexity.User.Username == nil {
@@ -769,6 +801,9 @@ type User {
   id: ID!
   username: String!
   email: String!
+  Role: String!
+  StorageUsed: Int!
+  DeduplicationStorageUsed: Int!
 }
 
 # The payload returned after a successful authentication.
@@ -895,10 +930,12 @@ type Query {
   # limit and offset are for pagination
   # e.g - first page shows first 25 items, 2nd page shows next 25, and so on..
   searchResources(
-    filters: SearchFilters!, 
-    offset: Int = 0, 
+    filters: SearchFilters!
+    offset: Int = 0
     limit: Int = 25
   ): [Resource!]!
+  #Admin functionality to view all resources by users
+  allResources: [Resource!]!
 }
 
 # The entry point for all write/change operations.
@@ -928,7 +965,6 @@ type Mutation {
   # --- Tagging Files and Folders for efficient search
   addTagToResource(resourceID: ID!, tagName: String!): Resource!
   removeTagFromResource(resourceID: ID!, tagID: ID!): Resource!
-
 }
 `, BuiltIn: false},
 }

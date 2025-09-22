@@ -153,9 +153,12 @@ type Tag struct {
 }
 
 type User struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
+	ID                       string `json:"id"`
+	Username                 string `json:"username"`
+	Email                    string `json:"email"`
+	Role                     string `json:"Role"`
+	StorageUsed              int    `json:"StorageUsed"`
+	DeduplicationStorageUsed int    `json:"DeduplicationStorageUsed"`
 }
 
 type Role string

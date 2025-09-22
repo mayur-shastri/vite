@@ -37,6 +37,7 @@ func (r *repository) FindResourceByTokenAndUserAccess(ctx context.Context, token
 	var resource database.Resource
 	userID, _ := getUserIDFromContext(ctx)
 	if err := r.db.WithContext(ctx).
+		Preload("User").
 		Preload("PhysicalFile").
 		Where("share_token = ?", token).
 		First(&resource).Error; err != nil {
