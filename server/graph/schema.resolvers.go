@@ -36,23 +36,25 @@ func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
 	switch dbRes.Type {
 	case database.Folder:
 		return &model.Folder{
-			ID:        fmt.Sprint(dbRes.ID),
-			Name:      dbRes.Name,
-			Owner:     owner,
-			CreatedAt: dbRes.CreatedAt.String(),
-			UpdatedAt: dbRes.UpdatedAt.String(),
-			Type:      string(dbRes.Type),
+			ID:         fmt.Sprint(dbRes.ID),
+			Name:       dbRes.Name,
+			Owner:      owner,
+			CreatedAt:  dbRes.CreatedAt.String(),
+			UpdatedAt:  dbRes.UpdatedAt.String(),
+			Type:       string(dbRes.Type),
+			ShareToken: string(*dbRes.ShareToken),
 		}, nil
 	case database.File:
 		return &model.File{
-			ID:        fmt.Sprint(dbRes.ID),
-			Name:      dbRes.Name,
-			Owner:     owner,
-			CreatedAt: dbRes.CreatedAt.String(),
-			UpdatedAt: dbRes.UpdatedAt.String(),
-			Type:      string(dbRes.Type),
-			SizeBytes: int(dbRes.PhysicalFile.SizeBytes),
-			MimeType:  string(dbRes.PhysicalFile.MimeType),
+			ID:         fmt.Sprint(dbRes.ID),
+			Name:       dbRes.Name,
+			Owner:      owner,
+			CreatedAt:  dbRes.CreatedAt.String(),
+			UpdatedAt:  dbRes.UpdatedAt.String(),
+			Type:       string(dbRes.Type),
+			SizeBytes:  int(dbRes.PhysicalFile.SizeBytes),
+			MimeType:   string(dbRes.PhysicalFile.MimeType),
+			ShareToken: string(*dbRes.ShareToken),
 		}, nil
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
@@ -519,14 +521,14 @@ func (r *queryResolver) SearchResources(ctx context.Context, filters model.Searc
 	// 1. Map the GraphQL input model to your internal service model
 	// This keeps your service layer decoupled from the GraphQL schema.
 	serviceFilters := search.SearchFilters{
-		Name:         filters.Name,
-		Types:        filters.Types,
-		MimeTypes:    filters.MimeTypes,
-		Tags:         filters.Tags,
+		Name:      filters.Name,
+		Types:     filters.Types,
+		MimeTypes: filters.MimeTypes,
+		Tags:      filters.Tags,
 	}
 
 	if filters.UploaderName != nil {
-    	serviceFilters.UploaderName = filters.UploaderName
+		serviceFilters.UploaderName = filters.UploaderName
 	}
 
 	// Handle pointers for optional fields
