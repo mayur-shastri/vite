@@ -36,7 +36,11 @@ func (r *repository) FindResourceByTokenAndUserAccess(ctx context.Context, token
 	// 1. Find the resource using the share token
 	var resource database.Resource
 	userID, _ := getUserIDFromContext(ctx)
-	if err := r.db.WithContext(ctx).Where("share_token = ?", token).First(&resource).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Preload("PhysicalFile"). // ✅ Preload physical file metadata
+		Where("share_token = ?", token).
+		First(&resource).Error; err != nil {
+
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("share link not found or invalid")
 		}

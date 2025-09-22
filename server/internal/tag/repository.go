@@ -24,7 +24,7 @@ func NewTagRepository(db *gorm.DB) TagRepository {
 
 func (r *tagRepository) FindResourceByID(id uint) (*database.Resource, error) {
 	var resource database.Resource
-	if err := r.db.Preload("Tags").First(&resource, id).Error; err != nil {
+	if err := r.db.Preload("PhysicalFile").Preload("Tags").First(&resource, id).Error; err != nil {
 		return nil, err
 	}
 	return &resource, nil
