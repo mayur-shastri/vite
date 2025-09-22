@@ -91,7 +91,7 @@ func main() {
 	router := chi.NewRouter()
 
 	corsMiddleware := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
+		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		AllowCredentials: true,
@@ -103,7 +103,10 @@ func main() {
 
 	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", authedSrv)
-	router.Get("/download/{resourceID}", file.DownloadFileHandler(db, permissionRepo))
+
+	router.Get("/download/{resourceID}", func(w http.ResponseWriter, r *http.Request) {
+		middleware.AuthMiddleware(file.DownloadFileHandler(db, permissionRepo)).ServeHTTP(w, r)
+	})
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, router))

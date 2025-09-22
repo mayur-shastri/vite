@@ -17,6 +17,7 @@ func DownloadFileHandler(db *gorm.DB, permissionRepo permission.Repository) http
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 1. Get resourceID from URL
 		resourceIDStr := chi.URLParam(r, "resourceID")
+		fmt.Println(resourceIDStr)
 		resourceID, err := strconv.ParseUint(resourceIDStr, 10, 64)
 		if err != nil {
 			http.Error(w, "invalid resource ID", http.StatusBadRequest)
