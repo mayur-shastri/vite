@@ -56,7 +56,6 @@ func (r *repository) FindResourceByTokenAndUserAccess(ctx context.Context, token
 	}
 
 	if directPermissionCount > 0 {
-		// User has direct access, return the resource
 		return &resource, nil
 	}
 

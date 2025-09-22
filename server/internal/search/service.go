@@ -24,7 +24,7 @@ type service struct {
 }
 
 // NewService creates a new instance of the search service.
-func NewService(repo Repository) Service {
+func NewSearchService(repo Repository) Service {
 	return &service{repo: repo}
 }
 
@@ -42,7 +42,7 @@ func (s *service) Search(ctx context.Context, filters SearchFilters, pagination 
 			return nil, errors.New("invalid filters: minSizeBytes cannot be greater than maxSizeBytes")
 		}
 	}
-	
+
 	// Add other validations for dates, etc., as needed.
 
 	// 3. Security Check: Enforce that the search is scoped to the current user.
