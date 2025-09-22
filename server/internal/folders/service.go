@@ -73,13 +73,12 @@ func (s *service) GetResources(ctx context.Context, folderID *uint) ([]database.
 		return s.repo.GetRoot(userID)
 	}
 
-	parent, err := s.repo.GetByID(*folderID)
+	_, err = s.repo.GetByID(*folderID)
 	if err != nil {
 		return nil, errors.New("folder not found")
 	}
-	if parent.OwnerID != userID {
-		return nil, errors.New("access denied")
-	}
+
+	// ...
 
 	return s.repo.GetChildren(*folderID)
 }

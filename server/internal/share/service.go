@@ -3,6 +3,8 @@ package share
 
 import (
 	"context"
+	"fmt"
+
 	// Assume you have an auth package
 	"github.com/bhavyajaix/BalkanID-filevault/internal/database"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/file"
@@ -51,6 +53,7 @@ func (s *service) ResolveShareLink(ctx context.Context, token string) (*database
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(children)
 		dbResource.Children = children
 	}
 
