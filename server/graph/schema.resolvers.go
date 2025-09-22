@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/bhavyajaix/BalkanID-filevault/graph/generated"
@@ -400,6 +401,54 @@ func (r *mutationResolver) RevokePermission(ctx context.Context, resourceID stri
 	return toGqlPermission(updatedResource)
 }
 
+// AddTagToResource is the resolver for the addTagToResource field.
+func (r *mutationResolver) AddTagToResource(ctx context.Context, resourceID string, tagName string) (model.Resource, error) {
+	// 1. Parse GraphQL string ID to uint
+	id, err := strconv.ParseUint(resourceID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resource ID format")
+	}
+
+	// 2. Call the service to perform the business logic
+	resource, err := r.Resolver.TagService.AddTag(uint(id), tagName)
+	if err != nil {
+		return nil, err // The service will return a descriptive error
+	}
+
+	// 3. Convert to GraphQL model and return the result
+	gqlResource, err := toGqlResource(resource)
+	if err != nil {
+		return nil, err
+	}
+	return gqlResource, nil
+}
+
+// RemoveTagFromResource is the resolver for the removeTagFromResource field.
+func (r *mutationResolver) RemoveTagFromResource(ctx context.Context, resourceID string, tagID string) (model.Resource, error) {
+	// 1. Parse IDs
+	resID, err := strconv.ParseUint(resourceID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resource ID format")
+	}
+	tID, err := strconv.ParseUint(tagID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid tag ID format")
+	}
+
+	// 2. Call the service
+	resource, err := r.Resolver.TagService.RemoveTag(uint(resID), uint(tID))
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Convert to GraphQL model and return the result
+	gqlResource, err := toGqlResource(resource)
+	if err != nil {
+		return nil, err
+	}
+	return gqlResource, nil
+}
+
 // Me is the resolver for the me field. (Unchanged)
 func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
 	userID, ok := ctx.Value(middleware.UserContextKey).(uint)
@@ -470,3 +519,89 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
+	if dbRes == nil {
+		return nil, errors.New("cannot convert nil resource")
+	}
+
+	owner := &model.User{
+		ID:       fmt.Sprint(dbRes.User.ID),
+		Username: dbRes.User.Username,
+		Email:    dbRes.User.Email,
+	}
+
+	switch dbRes.Type {
+	case database.Folder:
+		return &model.Folder{
+			ID:        fmt.Sprint(dbRes.ID),
+			Name:      dbRes.Name,
+			Owner:     owner,
+			CreatedAt: dbRes.CreatedAt.String(),
+			UpdatedAt: dbRes.UpdatedAt.String(),
+			Type:      string(dbRes.Type),
+		}, nil
+	case database.File:
+		return &model.File{
+			ID:        fmt.Sprint(dbRes.ID),
+			Name:      dbRes.Name,
+			Owner:     owner,
+			CreatedAt: dbRes.CreatedAt.String(),
+			UpdatedAt: dbRes.UpdatedAt.String(),
+			Type:      string(dbRes.Type),
+			SizeBytes: int(dbRes.PhysicalFile.SizeBytes),
+			MimeType:  string(dbRes.PhysicalFile.MimeType),
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
+	}
+}
+func toGqlPermission(dbRes *database.Resource) (model.Resource, error) {
+	if dbRes == nil {
+		return nil, errors.New("cannot convert nil resource")
+	}
+
+	owner := &model.User{
+		ID:       fmt.Sprint(dbRes.User.ID),
+		Username: dbRes.User.Username,
+		Email:    dbRes.User.Email,
+	}
+
+	switch dbRes.Type {
+	case database.Folder:
+		return &model.Folder{
+			ID:        fmt.Sprint(dbRes.ID),
+			Name:      dbRes.Name,
+			Owner:     owner,
+			CreatedAt: dbRes.CreatedAt.String(),
+			UpdatedAt: dbRes.UpdatedAt.String(),
+			Type:      string(dbRes.Type),
+		}, nil
+	case database.File:
+		return &model.File{
+			ID:        fmt.Sprint(dbRes.ID),
+			Name:      dbRes.Name,
+			Owner:     owner,
+			CreatedAt: dbRes.CreatedAt.String(),
+			UpdatedAt: dbRes.UpdatedAt.String(),
+			Type:      string(dbRes.Type),
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
+	}
+}
+func getUserIDFromContext(ctx context.Context) (uint, error) {
+	userID, ok := ctx.Value(middleware.UserContextKey).(uint)
+	if !ok {
+		return 0, errors.New("unauthorized: access denied")
+	}
+	return userID, nil
+}
+*/

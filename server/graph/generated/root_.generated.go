@@ -57,6 +57,7 @@ type ComplexityRoot struct {
 		ShareToken  func(childComplexity int) int
 		SizeBytes   func(childComplexity int) int
 		Storage     func(childComplexity int) int
+		Tags        func(childComplexity int) int
 		Type        func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 	}
@@ -70,23 +71,26 @@ type ComplexityRoot struct {
 		Parent      func(childComplexity int) int
 		Permissions func(childComplexity int) int
 		ShareToken  func(childComplexity int) int
+		Tags        func(childComplexity int) int
 		Type        func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 	}
 
 	Mutation struct {
-		CreateFolder     func(childComplexity int, name string, parentID *string) int
-		DeleteFile       func(childComplexity int, id string) int
-		DeleteFolder     func(childComplexity int, id string) int
-		GrantPermission  func(childComplexity int, resourceID string, email string, role model.Role) int
-		Login            func(childComplexity int, email string, password string) int
-		MoveFile         func(childComplexity int, fileID string, newParentID *string) int
-		MoveFolder       func(childComplexity int, folderID string, newParentID *string) int
-		Register         func(childComplexity int, username string, email string, password string) int
-		RenameFile       func(childComplexity int, id string, newName string) int
-		RenameFolder     func(childComplexity int, id string, newName string) int
-		RevokePermission func(childComplexity int, resourceID string, email string) int
-		UploadFile       func(childComplexity int, file graphql.Upload, parentID *string) int
+		AddTagToResource      func(childComplexity int, resourceID string, tagName string) int
+		CreateFolder          func(childComplexity int, name string, parentID *string) int
+		DeleteFile            func(childComplexity int, id string) int
+		DeleteFolder          func(childComplexity int, id string) int
+		GrantPermission       func(childComplexity int, resourceID string, email string, role model.Role) int
+		Login                 func(childComplexity int, email string, password string) int
+		MoveFile              func(childComplexity int, fileID string, newParentID *string) int
+		MoveFolder            func(childComplexity int, folderID string, newParentID *string) int
+		Register              func(childComplexity int, username string, email string, password string) int
+		RemoveTagFromResource func(childComplexity int, resourceID string, tagID string) int
+		RenameFile            func(childComplexity int, id string, newName string) int
+		RenameFolder          func(childComplexity int, id string, newName string) int
+		RevokePermission      func(childComplexity int, resourceID string, email string) int
+		UploadFile            func(childComplexity int, file graphql.Upload, parentID *string) int
 	}
 
 	Permission struct {
@@ -107,6 +111,13 @@ type ComplexityRoot struct {
 		OriginalSizeBytes     func(childComplexity int) int
 		SavedBytes            func(childComplexity int) int
 		SavedPercentage       func(childComplexity int) int
+	}
+
+	Tag struct {
+		CreatedAt func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Name      func(childComplexity int) int
+		UpdatedAt func(childComplexity int) int
 	}
 
 	User struct {
@@ -219,6 +230,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.File.Storage(childComplexity), true
 
+	case "File.tags":
+		if e.complexity.File.Tags == nil {
+			break
+		}
+
+		return e.complexity.File.Tags(childComplexity), true
+
 	case "File.type":
 		if e.complexity.File.Type == nil {
 			break
@@ -289,6 +307,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Folder.ShareToken(childComplexity), true
 
+	case "Folder.tags":
+		if e.complexity.Folder.Tags == nil {
+			break
+		}
+
+		return e.complexity.Folder.Tags(childComplexity), true
+
 	case "Folder.type":
 		if e.complexity.Folder.Type == nil {
 			break
@@ -302,6 +327,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Folder.UpdatedAt(childComplexity), true
+
+	case "Mutation.addTagToResource":
+		if e.complexity.Mutation.AddTagToResource == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addTagToResource_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddTagToResource(childComplexity, args["resourceID"].(string), args["tagName"].(string)), true
 
 	case "Mutation.createFolder":
 		if e.complexity.Mutation.CreateFolder == nil {
@@ -398,6 +435,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.Register(childComplexity, args["username"].(string), args["email"].(string), args["password"].(string)), true
+
+	case "Mutation.removeTagFromResource":
+		if e.complexity.Mutation.RemoveTagFromResource == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeTagFromResource_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveTagFromResource(childComplexity, args["resourceID"].(string), args["tagID"].(string)), true
 
 	case "Mutation.renameFile":
 		if e.complexity.Mutation.RenameFile == nil {
@@ -543,6 +592,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StorageStats.SavedPercentage(childComplexity), true
+
+	case "Tag.createdAt":
+		if e.complexity.Tag.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.Tag.CreatedAt(childComplexity), true
+
+	case "Tag.id":
+		if e.complexity.Tag.ID == nil {
+			break
+		}
+
+		return e.complexity.Tag.ID(childComplexity), true
+
+	case "Tag.name":
+		if e.complexity.Tag.Name == nil {
+			break
+		}
+
+		return e.complexity.Tag.Name(childComplexity), true
+
+	case "Tag.updatedAt":
+		if e.complexity.Tag.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.Tag.UpdatedAt(childComplexity), true
 
 	case "User.email":
 		if e.complexity.User.Email == nil {
@@ -705,6 +782,13 @@ type Permission {
   role: Role!
 }
 
+type Tag {
+  id: ID!
+  name: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
 # A generic interface for any item in the vault, whether a file or folder.
 # This is the core of the new, unified schema.
 interface Resource {
@@ -717,6 +801,7 @@ interface Resource {
   shareToken: String!
   # List of users who have explicit access to this resource.
   permissions: [Permission!]
+  tags: [Tag!]!
 }
 
 # Represents a folder, which can contain other resources.
@@ -735,6 +820,7 @@ type Folder implements Resource {
   # Folder-specific field
   # Contains all the files and sub-folders within this folder.
   children: [Resource!]!
+  tags: [Tag!]!
 }
 
 # Represents a file's metadata.
@@ -754,6 +840,7 @@ type File implements Resource {
   sizeBytes: Int!
   mimeType: String!
   storage: StorageStats!
+  tags: [Tag!]!
 }
 
 # The entry point for all read operations.
@@ -796,6 +883,11 @@ type Mutation {
   # --- Sharing and permissions (still generic) ---
   grantPermission(resourceId: ID!, email: String!, role: Role!): Resource!
   revokePermission(resourceId: ID!, email: String!): Resource!
+
+  # --- Tagging Files and Folders for efficient search
+  addTagToResource(resourceID: ID!, tagName: String!): Resource!
+  removeTagFromResource(resourceID: ID!, tagID: ID!): Resource!
+
 }
 `, BuiltIn: false},
 }

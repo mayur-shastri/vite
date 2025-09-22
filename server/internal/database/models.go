@@ -26,8 +26,8 @@ type PhysicalFile struct {
 	gorm.Model
 	FileHash       string `gorm:"size:64;uniqueIndex;not null"`
 	FilePath       string `gorm:"type:text;unique;not null"`
-	SizeBytes      int64  `gorm:"not null"`
-	MimeType       string `gorm:"size:255;not null"`
+	SizeBytes      int64  `gorm:"not null;index"`
+	MimeType       string `gorm:"size:255;not null;index"`
 	ReferenceCount int    `gorm:"default:1;not null"`
 }
 
@@ -39,17 +39,23 @@ const (
 	Folder ResourceType = "folder"
 )
 
+type Tag struct {
+	gorm.Model
+	Name string `gorm:"size:100;uniqueIndex;not null"` // Tag names should be unique
+}
+
 // Resource unifies files and folders into a single table.
 type Resource struct {
 	gorm.Model
-	OwnerID        uint         `gorm:"index"` // Indexed for performance
-	User           User         `gorm:"foreignKey:OwnerID;constraint:OnDelete:CASCADE;"`
-	ParentID       *uint        `gorm:"index"` // Indexed for performance
-	Parent         *Resource    `gorm:"foreignKey:ParentID;constraint:OnDelete:CASCADE;"`
-	Name           string       `gorm:"size:255;not null"`
-	ShareToken     *string      `gorm:"size:255;uniqueIndex"`
-	Type           ResourceType `gorm:"type:varchar(50);not null"` // Explicit type
-	PhysicalFileID *uint
+	OwnerID        uint          `gorm:"index"` // Indexed for performance
+	User           User          `gorm:"foreignKey:OwnerID;constraint:OnDelete:CASCADE;"`
+	ParentID       *uint         `gorm:"index"` // Indexed for performance
+	Parent         *Resource     `gorm:"foreignKey:ParentID;constraint:OnDelete:CASCADE;"`
+	Name           string        `gorm:"size:255;not null;index"`
+	ShareToken     *string       `gorm:"size:255;uniqueIndex"`
+	Type           ResourceType  `gorm:"type:varchar(50);not null;index"` // Explicit type
+	PhysicalFileID *uint         `gorm:"index"`
+	Tags           []*Tag        `gorm:"many2many:resource_tags;"`
 	PhysicalFile   *PhysicalFile `gorm:"foreignKey:PhysicalFileID;constraint:OnDelete:RESTRICT;"`
 	// "Has Many" relationships for easier preloading
 	Permissions []Permission `gorm:"foreignKey:ResourceID"`

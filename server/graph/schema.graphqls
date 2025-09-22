@@ -34,6 +34,13 @@ type Permission {
   role: Role!
 }
 
+type Tag {
+  id: ID!
+  name: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
 # A generic interface for any item in the vault, whether a file or folder.
 # This is the core of the new, unified schema.
 interface Resource {
@@ -46,6 +53,7 @@ interface Resource {
   shareToken: String!
   # List of users who have explicit access to this resource.
   permissions: [Permission!]
+  tags: [Tag!]!
 }
 
 # Represents a folder, which can contain other resources.
@@ -64,6 +72,7 @@ type Folder implements Resource {
   # Folder-specific field
   # Contains all the files and sub-folders within this folder.
   children: [Resource!]!
+  tags: [Tag!]!
 }
 
 # Represents a file's metadata.
@@ -83,6 +92,7 @@ type File implements Resource {
   sizeBytes: Int!
   mimeType: String!
   storage: StorageStats!
+  tags: [Tag!]!
 }
 
 # The entry point for all read operations.
@@ -125,4 +135,9 @@ type Mutation {
   # --- Sharing and permissions (still generic) ---
   grantPermission(resourceId: ID!, email: String!, role: Role!): Resource!
   revokePermission(resourceId: ID!, email: String!): Resource!
+
+  # --- Tagging Files and Folders for efficient search
+  addTagToResource(resourceID: ID!, tagName: String!): Resource!
+  removeTagFromResource(resourceID: ID!, tagID: ID!): Resource!
+
 }

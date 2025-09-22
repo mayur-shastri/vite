@@ -19,6 +19,7 @@ type Resource interface {
 	GetUpdatedAt() string
 	GetShareToken() string
 	GetPermissions() []*Permission
+	GetTags() []*Tag
 }
 
 type AuthPayload struct {
@@ -39,6 +40,7 @@ type File struct {
 	SizeBytes   int           `json:"sizeBytes"`
 	MimeType    string        `json:"mimeType"`
 	Storage     *StorageStats `json:"storage"`
+	Tags        []*Tag        `json:"tags"`
 }
 
 func (File) IsResource()                {}
@@ -59,6 +61,16 @@ func (this File) GetPermissions() []*Permission {
 	}
 	return interfaceSlice
 }
+func (this File) GetTags() []*Tag {
+	if this.Tags == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Tag, 0, len(this.Tags))
+	for _, concrete := range this.Tags {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
 
 type Folder struct {
 	ID          string        `json:"id"`
@@ -71,6 +83,7 @@ type Folder struct {
 	Type        string        `json:"type"`
 	ShareToken  string        `json:"shareToken"`
 	Children    []Resource    `json:"children"`
+	Tags        []*Tag        `json:"tags"`
 }
 
 func (Folder) IsResource()                {}
@@ -87,6 +100,16 @@ func (this Folder) GetPermissions() []*Permission {
 	}
 	interfaceSlice := make([]*Permission, 0, len(this.Permissions))
 	for _, concrete := range this.Permissions {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this Folder) GetTags() []*Tag {
+	if this.Tags == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Tag, 0, len(this.Tags))
+	for _, concrete := range this.Tags {
 		interfaceSlice = append(interfaceSlice, concrete)
 	}
 	return interfaceSlice
@@ -108,6 +131,13 @@ type StorageStats struct {
 	DeduplicatedSizeBytes int     `json:"deduplicatedSizeBytes"`
 	SavedBytes            int     `json:"savedBytes"`
 	SavedPercentage       float64 `json:"savedPercentage"`
+}
+
+type Tag struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 type User struct {

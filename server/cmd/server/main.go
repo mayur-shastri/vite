@@ -20,6 +20,7 @@ import (
 	"github.com/bhavyajaix/BalkanID-filevault/internal/middleware"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/permission"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/share"
+	"github.com/bhavyajaix/BalkanID-filevault/internal/tag"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/user"
 )
 
@@ -66,6 +67,8 @@ func main() {
 	fileService := file.NewService(fileRepo, db, storagePath, permissionRepo)
 	shareRepo := share.NewRepository(db)
 	shareService := share.NewService(shareRepo, foldersRepo, fileRepo, db)
+	tagRepo := tag.NewTagRepository(db)
+	tagService := tag.NewTagService(tagRepo)
 	// 4. Inject Dependencies into the Resolver
 	// The resolver now has access to the user service.
 	resolver := &graph.Resolver{
@@ -75,6 +78,7 @@ func main() {
 		FolderService:     foldersService,
 		PermissionService: permissionService,
 		ShareService:      shareService,
+		TagService:        tagService,
 	}
 
 	// --- Server Setup ---

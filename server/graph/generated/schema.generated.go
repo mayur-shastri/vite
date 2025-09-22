@@ -30,6 +30,8 @@ type MutationResolver interface {
 	MoveFolder(ctx context.Context, folderID string, newParentID *string) (*model.Folder, error)
 	GrantPermission(ctx context.Context, resourceID string, email string, role model.Role) (model.Resource, error)
 	RevokePermission(ctx context.Context, resourceID string, email string) (model.Resource, error)
+	AddTagToResource(ctx context.Context, resourceID string, tagName string) (model.Resource, error)
+	RemoveTagFromResource(ctx context.Context, resourceID string, tagID string) (model.Resource, error)
 }
 type QueryResolver interface {
 	Me(ctx context.Context) (*model.User, error)
@@ -42,6 +44,22 @@ type QueryResolver interface {
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_addTagToResource_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "resourceID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["resourceID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "tagName", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["tagName"] = arg1
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_createFolder_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -168,6 +186,22 @@ func (ec *executionContext) field_Mutation_register_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["password"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeTagFromResource_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "resourceID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["resourceID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "tagID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["tagID"] = arg1
 	return args, nil
 }
 
@@ -503,6 +537,8 @@ func (ec *executionContext) fieldContext_File_parent(_ context.Context, field gr
 				return ec.fieldContext_Folder_shareToken(ctx, field)
 			case "children":
 				return ec.fieldContext_Folder_children(ctx, field)
+			case "tags":
+				return ec.fieldContext_Folder_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Folder", field.Name)
 		},
@@ -758,6 +794,45 @@ func (ec *executionContext) fieldContext_File_storage(_ context.Context, field g
 	return fc, nil
 }
 
+func (ec *executionContext) _File_tags(ctx context.Context, field graphql.CollectedField, obj *model.File) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_File_tags,
+		func(ctx context.Context) (any, error) {
+			return obj.Tags, nil
+		},
+		nil,
+		ec.marshalNTag2ᚕᚖgithubᚗcomᚋbhavyajaixᚋBalkanIDᚑfilevaultᚋgraphᚋmodelᚐTagᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_File_tags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "File",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Tag_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Tag_name(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Tag_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Tag_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Tag", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Folder_id(ctx context.Context, field graphql.CollectedField, obj *model.Folder) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -897,6 +972,8 @@ func (ec *executionContext) fieldContext_Folder_parent(_ context.Context, field 
 				return ec.fieldContext_Folder_shareToken(ctx, field)
 			case "children":
 				return ec.fieldContext_Folder_children(ctx, field)
+			case "tags":
+				return ec.fieldContext_Folder_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Folder", field.Name)
 		},
@@ -1084,6 +1161,45 @@ func (ec *executionContext) fieldContext_Folder_children(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Folder_tags(ctx context.Context, field graphql.CollectedField, obj *model.Folder) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Folder_tags,
+		func(ctx context.Context) (any, error) {
+			return obj.Tags, nil
+		},
+		nil,
+		ec.marshalNTag2ᚕᚖgithubᚗcomᚋbhavyajaixᚋBalkanIDᚑfilevaultᚋgraphᚋmodelᚐTagᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Folder_tags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Folder",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Tag_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Tag_name(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Tag_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Tag_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Tag", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_register(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1227,6 +1343,8 @@ func (ec *executionContext) fieldContext_Mutation_uploadFile(ctx context.Context
 				return ec.fieldContext_File_mimeType(ctx, field)
 			case "storage":
 				return ec.fieldContext_File_storage(ctx, field)
+			case "tags":
+				return ec.fieldContext_File_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type File", field.Name)
 		},
@@ -1290,6 +1408,8 @@ func (ec *executionContext) fieldContext_Mutation_createFolder(ctx context.Conte
 				return ec.fieldContext_Folder_shareToken(ctx, field)
 			case "children":
 				return ec.fieldContext_Folder_children(ctx, field)
+			case "tags":
+				return ec.fieldContext_Folder_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Folder", field.Name)
 		},
@@ -1357,6 +1477,8 @@ func (ec *executionContext) fieldContext_Mutation_renameFile(ctx context.Context
 				return ec.fieldContext_File_mimeType(ctx, field)
 			case "storage":
 				return ec.fieldContext_File_storage(ctx, field)
+			case "tags":
+				return ec.fieldContext_File_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type File", field.Name)
 		},
@@ -1465,6 +1587,8 @@ func (ec *executionContext) fieldContext_Mutation_moveFile(ctx context.Context, 
 				return ec.fieldContext_File_mimeType(ctx, field)
 			case "storage":
 				return ec.fieldContext_File_storage(ctx, field)
+			case "tags":
+				return ec.fieldContext_File_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type File", field.Name)
 		},
@@ -1528,6 +1652,8 @@ func (ec *executionContext) fieldContext_Mutation_renameFolder(ctx context.Conte
 				return ec.fieldContext_Folder_shareToken(ctx, field)
 			case "children":
 				return ec.fieldContext_Folder_children(ctx, field)
+			case "tags":
+				return ec.fieldContext_Folder_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Folder", field.Name)
 		},
@@ -1632,6 +1758,8 @@ func (ec *executionContext) fieldContext_Mutation_moveFolder(ctx context.Context
 				return ec.fieldContext_Folder_shareToken(ctx, field)
 			case "children":
 				return ec.fieldContext_Folder_children(ctx, field)
+			case "tags":
+				return ec.fieldContext_Folder_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Folder", field.Name)
 		},
@@ -1726,6 +1854,88 @@ func (ec *executionContext) fieldContext_Mutation_revokePermission(ctx context.C
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_revokePermission_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addTagToResource(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_addTagToResource,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().AddTagToResource(ctx, fc.Args["resourceID"].(string), fc.Args["tagName"].(string))
+		},
+		nil,
+		ec.marshalNResource2githubᚗcomᚋbhavyajaixᚋBalkanIDᚑfilevaultᚋgraphᚋmodelᚐResource,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addTagToResource(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("FieldContext.Child cannot be called on type INTERFACE")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addTagToResource_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeTagFromResource(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_removeTagFromResource,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().RemoveTagFromResource(ctx, fc.Args["resourceID"].(string), fc.Args["tagID"].(string))
+		},
+		nil,
+		ec.marshalNResource2githubᚗcomᚋbhavyajaixᚋBalkanIDᚑfilevaultᚋgraphᚋmodelᚐResource,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeTagFromResource(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("FieldContext.Child cannot be called on type INTERFACE")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeTagFromResource_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -1884,6 +2094,8 @@ func (ec *executionContext) fieldContext_Query_file(ctx context.Context, field g
 				return ec.fieldContext_File_mimeType(ctx, field)
 			case "storage":
 				return ec.fieldContext_File_storage(ctx, field)
+			case "tags":
+				return ec.fieldContext_File_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type File", field.Name)
 		},
@@ -1947,6 +2159,8 @@ func (ec *executionContext) fieldContext_Query_folder(ctx context.Context, field
 				return ec.fieldContext_Folder_shareToken(ctx, field)
 			case "children":
 				return ec.fieldContext_Folder_children(ctx, field)
+			case "tags":
+				return ec.fieldContext_Folder_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Folder", field.Name)
 		},
@@ -2271,6 +2485,122 @@ func (ec *executionContext) fieldContext_StorageStats_savedPercentage(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Tag_id(ctx context.Context, field graphql.CollectedField, obj *model.Tag) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Tag_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Tag_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Tag",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Tag_name(ctx context.Context, field graphql.CollectedField, obj *model.Tag) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Tag_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Tag_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Tag",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Tag_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Tag) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Tag_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Tag_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Tag",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Tag_updatedAt(ctx context.Context, field graphql.CollectedField, obj *model.Tag) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Tag_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Tag_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Tag",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2502,6 +2832,11 @@ func (ec *executionContext) _File(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "tags":
+			out.Values[i] = ec._File_tags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2577,6 +2912,11 @@ func (ec *executionContext) _Folder(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "children":
 			out.Values[i] = ec._Folder_children(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tags":
+			out.Values[i] = ec._Folder_tags(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -2702,6 +3042,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "revokePermission":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_revokePermission(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addTagToResource":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addTagToResource(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeTagFromResource":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeTagFromResource(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -2975,6 +3329,60 @@ func (ec *executionContext) _StorageStats(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var tagImplementors = []string{"Tag"}
+
+func (ec *executionContext) _Tag(ctx context.Context, sel ast.SelectionSet, obj *model.Tag) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tagImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Tag")
+		case "id":
+			out.Values[i] = ec._Tag_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._Tag_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._Tag_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._Tag_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var userImplementors = []string{"User"}
 
 func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *model.User) graphql.Marshaler {
@@ -3152,6 +3560,60 @@ func (ec *executionContext) marshalNStorageStats2ᚖgithubᚗcomᚋbhavyajaixᚋ
 		return graphql.Null
 	}
 	return ec._StorageStats(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTag2ᚕᚖgithubᚗcomᚋbhavyajaixᚋBalkanIDᚑfilevaultᚋgraphᚋmodelᚐTagᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Tag) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTag2ᚖgithubᚗcomᚋbhavyajaixᚋBalkanIDᚑfilevaultᚋgraphᚋmodelᚐTag(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTag2ᚖgithubᚗcomᚋbhavyajaixᚋBalkanIDᚑfilevaultᚋgraphᚋmodelᚐTag(ctx context.Context, sel ast.SelectionSet, v *model.Tag) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Tag(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx context.Context, v any) (graphql.Upload, error) {
