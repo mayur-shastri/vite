@@ -126,6 +126,18 @@ type Permission struct {
 type Query struct {
 }
 
+type SearchFilters struct {
+	Name         *string  `json:"name,omitempty"`
+	Types        []string `json:"types,omitempty"`
+	MimeTypes    []string `json:"mimeTypes,omitempty"`
+	MinSizeBytes *int     `json:"minSizeBytes,omitempty"`
+	MaxSizeBytes *int     `json:"maxSizeBytes,omitempty"`
+	AfterDate    *string  `json:"afterDate,omitempty"`
+	BeforeDate   *string  `json:"beforeDate,omitempty"`
+	Tags         []string `json:"tags,omitempty"`
+	UploaderName *string  `json:"uploaderName,omitempty"`
+}
+
 type StorageStats struct {
 	OriginalSizeBytes     int     `json:"originalSizeBytes"`
 	DeduplicatedSizeBytes int     `json:"deduplicatedSizeBytes"`

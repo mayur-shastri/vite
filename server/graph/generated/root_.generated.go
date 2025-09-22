@@ -104,6 +104,7 @@ type ComplexityRoot struct {
 		Me               func(childComplexity int) int
 		ResolveShareLink func(childComplexity int, token string) int
 		Resources        func(childComplexity int, folderID *string) int
+		SearchResources  func(childComplexity int, filters model.SearchFilters, offset *int, limit *int) int
 	}
 
 	StorageStats struct {
@@ -565,6 +566,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Resources(childComplexity, args["folderId"].(*string)), true
 
+	case "Query.searchResources":
+		if e.complexity.Query.SearchResources == nil {
+			break
+		}
+
+		args, err := ec.field_Query_searchResources_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.SearchResources(childComplexity, args["filters"].(model.SearchFilters), args["offset"].(*int), args["limit"].(*int)), true
+
 	case "StorageStats.deduplicatedSizeBytes":
 		if e.complexity.StorageStats.DeduplicatedSizeBytes == nil {
 			break
@@ -649,7 +662,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
-	inputUnmarshalMap := graphql.BuildUnmarshalerMap()
+	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputSearchFilters,
+	)
 	first := true
 
 	switch opCtx.Operation.Operation {
@@ -843,6 +858,24 @@ type File implements Resource {
   tags: [Tag!]!
 }
 
+input SearchFilters {
+  name: String
+  # e.g., ["file"] to only search for files
+  types: [String!]
+  # e.g., ["image/jpeg", "application/pdf"]
+  mimeTypes: [String!]
+  minSizeBytes: Int
+  maxSizeBytes: Int
+  # Search for files created after this date (e.g., "2025-01-01T00:00:00Z")
+  afterDate: String
+  # Search for files created before this date
+  beforeDate: String
+  # e.g., ["Q4-Report", "urgent"]
+  tags: [String!]
+  # uploader's name
+  uploaderName: String
+}
+
 # The entry point for all read operations.
 type Query {
   # Get the currently authenticated user's profile.
@@ -858,6 +891,14 @@ type Query {
   # Get the contents of a specific folder.
   # If folderId is null, it returns the user's root-level resources.
   resources(folderId: ID): [Resource!]!
+  # Search for resources based on a variety of criteria
+  # limit and offset are for pagination
+  # e.g - first page shows first 25 items, 2nd page shows next 25, and so on..
+  searchResources(
+    filters: SearchFilters!, 
+    offset: Int = 0, 
+    limit: Int = 25
+  ): [Resource!]!
 }
 
 # The entry point for all write/change operations.

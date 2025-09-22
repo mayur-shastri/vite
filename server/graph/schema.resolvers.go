@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/bhavyajaix/BalkanID-filevault/graph/generated"
@@ -16,6 +17,7 @@ import (
 	"github.com/bhavyajaix/BalkanID-filevault/internal/database"
 	fileservice "github.com/bhavyajaix/BalkanID-filevault/internal/file"
 	"github.com/bhavyajaix/BalkanID-filevault/internal/middleware"
+	"github.com/bhavyajaix/BalkanID-filevault/internal/search"
 	"github.com/bhavyajaix/BalkanID-filevault/pkg/auth"
 	"github.com/bhavyajaix/BalkanID-filevault/pkg/utils"
 )
@@ -90,7 +92,6 @@ func toGqlPermission(dbRes *database.Resource) (model.Resource, error) {
 		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
 	}
 }
-
 func getUserIDFromContext(ctx context.Context) (uint, error) {
 	userID, ok := ctx.Value(middleware.UserContextKey).(uint)
 	if !ok {
@@ -508,6 +509,67 @@ func (r *queryResolver) Resources(ctx context.Context, folderID *string) ([]mode
 			gqlResources = append(gqlResources, gqlRes)
 		}
 	}
+	return gqlResources, nil
+}
+
+// SearchResources is the resolver for the searchResources field.
+func (r *queryResolver) SearchResources(ctx context.Context, filters model.SearchFilters, offset *int, limit *int) ([]model.Resource, error) {
+	// 1. Map the GraphQL input model to your internal service model
+	// This keeps your service layer decoupled from the GraphQL schema.
+	serviceFilters := search.SearchFilters{
+		Name:         filters.Name,
+		Types:        filters.Types,
+		MimeTypes:    filters.MimeTypes,
+		Tags:         filters.Tags,
+	}
+
+	if filters.UploaderName != nil {
+    	serviceFilters.UploaderName = filters.UploaderName
+	}
+
+	// Handle pointers for optional fields
+	if filters.MinSizeBytes != nil {
+		minSize := int64(*filters.MinSizeBytes)
+		serviceFilters.MinSizeBytes = &minSize
+	}
+	if filters.MaxSizeBytes != nil {
+		maxSize := int64(*filters.MaxSizeBytes)
+		serviceFilters.MaxSizeBytes = &maxSize
+	}
+	if filters.AfterDate != nil {
+		after, _ := time.Parse(time.RFC3339, *filters.AfterDate)
+		serviceFilters.AfterDate = &after
+	}
+	if filters.BeforeDate != nil {
+		before, _ := time.Parse(time.RFC3339, *filters.BeforeDate)
+		serviceFilters.BeforeDate = &before
+	}
+
+	// Use default pagination if not provided
+	pagination := search.Pagination{Offset: 0, Limit: 25}
+	if offset != nil {
+		pagination.Offset = *offset
+	}
+	if limit != nil {
+		pagination.Limit = *limit
+	}
+
+	// 2. Call the service layer
+	// The service will handle getting the current user from the context and applying security rules.
+	dbResources, err := r.SearchService.Search(ctx, serviceFilters, pagination)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Convert your database models back to GraphQL models using your helper
+	gqlResources := make([]model.Resource, 0, len(dbResources))
+	for _, dbRes := range dbResources {
+		gqlRes, err := toGqlResource(&dbRes) // Use your existing helper
+		if err == nil {
+			gqlResources = append(gqlResources, gqlRes)
+		}
+	}
+
 	return gqlResources, nil
 }
 
