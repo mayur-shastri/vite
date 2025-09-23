@@ -1,9 +1,6 @@
 package folders
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/bhavyajaix/BalkanID-filevault/internal/database"
 	"gorm.io/gorm"
 )
@@ -35,12 +32,6 @@ func (r *repository) GetByID(id uint) (*database.Resource, error) {
 	if err := r.db.Preload("User").First(&resource, id).Error; err != nil {
 		return nil, err
 	}
-	jsonData, jsonErr := json.MarshalIndent(resource, "", "  ")
-	if jsonErr != nil {
-		fmt.Println("Error marshalling to JSON:", jsonErr)
-	} else {
-		fmt.Println(string(jsonData))
-	}
 	return &resource, nil
 }
 
@@ -56,12 +47,6 @@ func (r *repository) GetChildren(parentID uint) ([]database.Resource, error) {
 func (r *repository) GetRoot(ownerID uint) ([]database.Resource, error) {
 	var resources []database.Resource
 	err := r.db.Preload("User").Preload("PhysicalFile").Where("parent_id IS NULL AND owner_id = ?", ownerID).Find(&resources).Error
-	jsonData, jsonErr := json.MarshalIndent(resources, "", "  ")
-	if jsonErr != nil {
-		fmt.Println("Error marshalling to JSON:", jsonErr)
-	} else {
-		fmt.Println(string(jsonData))
-	}
 	return resources, err
 }
 

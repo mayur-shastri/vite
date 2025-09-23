@@ -225,7 +225,6 @@ func (s *service) DeleteFile(resourceID uint, userID uint) error {
 		// Delete the actual file from the disk.
 		if err := os.Remove(pf.FilePath); err != nil {
 			// Log this error but don't fail the transaction, as the DB state is consistent.
-			fmt.Printf("warning: failed to delete physical file from disk: %s, error: %v\n", pf.FilePath, err)
 		}
 	}
 

@@ -42,8 +42,6 @@ func (s *service) GrantPermission(ctx context.Context, resourceID uint, targetEm
 		return nil, err
 	}
 
-	fmt.Println("1. cooked");
-
 	// 2. Security Check: Verify the current user owns the resource.
 	resourceToShare, err := s.resourceRepo.GetByID(resourceID)
 	if err != nil {
@@ -53,22 +51,16 @@ func (s *service) GrantPermission(ctx context.Context, resourceID uint, targetEm
 		return nil, errors.New("access denied: only the owner can grant permissions")
 	}
 
-	fmt.Println("2. cooked");
-
 	// 3. Find the user to share with by their email.
 	targetUser, err := s.userRepo.GetUserByEmail(targetEmail)
 	if err != nil {
 		return nil, errors.New("user with the specified email not found")
 	}
 
-	fmt.Println("3. cooked");
-
 	// 4. Business Rule: Prevent owner from sharing with themselves.
 	if targetUser.ID == ownerID {
 		return nil, errors.New("cannot share a resource with yourself")
 	}
-
-	fmt.Println("4. cooked");
 
 	// 5. Create the permission and save it.
 	newPermission := &database.Permission{
@@ -80,8 +72,6 @@ func (s *service) GrantPermission(ctx context.Context, resourceID uint, targetEm
 	if err := s.permRepo.CreateOrUpdate(newPermission); err != nil {
 		return nil, err
 	}
-
-	fmt.Println("5. cooked");
 
 	// Return the updated resource (you'll need to Preload permissions)
 	return s.resourceRepo.GetByID(resourceID)
