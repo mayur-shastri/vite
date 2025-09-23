@@ -49,6 +49,7 @@ type ComplexityRoot struct {
 	File struct {
 		CreatedAt   func(childComplexity int) int
 		ID          func(childComplexity int) int
+		IsPublic    func(childComplexity int) int
 		MimeType    func(childComplexity int) int
 		Name        func(childComplexity int) int
 		Owner       func(childComplexity int) int
@@ -66,6 +67,7 @@ type ComplexityRoot struct {
 		Children    func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
 		ID          func(childComplexity int) int
+		IsPublic    func(childComplexity int) int
 		Name        func(childComplexity int) int
 		Owner       func(childComplexity int) int
 		Parent      func(childComplexity int) int
@@ -77,20 +79,22 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddTagToResource      func(childComplexity int, resourceID string, tagName string) int
-		CreateFolder          func(childComplexity int, name string, parentID *string) int
-		DeleteFile            func(childComplexity int, id string) int
-		DeleteFolder          func(childComplexity int, id string) int
-		GrantPermission       func(childComplexity int, resourceID string, email string, role model.Role) int
-		Login                 func(childComplexity int, email string, password string) int
-		MoveFile              func(childComplexity int, fileID string, newParentID *string) int
-		MoveFolder            func(childComplexity int, folderID string, newParentID *string) int
-		Register              func(childComplexity int, username string, email string, password string) int
-		RemoveTagFromResource func(childComplexity int, resourceID string, tagID string) int
-		RenameFile            func(childComplexity int, id string, newName string) int
-		RenameFolder          func(childComplexity int, id string, newName string) int
-		RevokePermission      func(childComplexity int, resourceID string, email string) int
-		UploadFile            func(childComplexity int, file graphql.Upload, parentID *string) int
+		AddTagToResource           func(childComplexity int, resourceID string, tagName string) int
+		CreateFolder               func(childComplexity int, name string, parentID *string) int
+		DeleteFile                 func(childComplexity int, id string) int
+		DeleteFolder               func(childComplexity int, id string) int
+		GrantPermission            func(childComplexity int, resourceID string, email string, role model.Role) int
+		Login                      func(childComplexity int, email string, password string) int
+		MakeResourcePublic         func(childComplexity int, resourceID string) int
+		MoveFile                   func(childComplexity int, fileID string, newParentID *string) int
+		MoveFolder                 func(childComplexity int, folderID string, newParentID *string) int
+		Register                   func(childComplexity int, username string, email string, password string) int
+		RemoveResourcePublicAccess func(childComplexity int, resourceID string) int
+		RemoveTagFromResource      func(childComplexity int, resourceID string, tagID string) int
+		RenameFile                 func(childComplexity int, id string, newName string) int
+		RenameFolder               func(childComplexity int, id string, newName string) int
+		RevokePermission           func(childComplexity int, resourceID string, email string) int
+		UploadFile                 func(childComplexity int, file graphql.Upload, parentID *string) int
 	}
 
 	Permission struct {
@@ -184,6 +188,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.File.ID(childComplexity), true
+
+	case "File.isPublic":
+		if e.complexity.File.IsPublic == nil {
+			break
+		}
+
+		return e.complexity.File.IsPublic(childComplexity), true
 
 	case "File.mimeType":
 		if e.complexity.File.MimeType == nil {
@@ -282,6 +293,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Folder.ID(childComplexity), true
+
+	case "Folder.isPublic":
+		if e.complexity.Folder.IsPublic == nil {
+			break
+		}
+
+		return e.complexity.Folder.IsPublic(childComplexity), true
 
 	case "Folder.name":
 		if e.complexity.Folder.Name == nil {
@@ -411,6 +429,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.Login(childComplexity, args["email"].(string), args["password"].(string)), true
 
+	case "Mutation.makeResourcePublic":
+		if e.complexity.Mutation.MakeResourcePublic == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_makeResourcePublic_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.MakeResourcePublic(childComplexity, args["resourceId"].(string)), true
+
 	case "Mutation.moveFile":
 		if e.complexity.Mutation.MoveFile == nil {
 			break
@@ -446,6 +476,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.Register(childComplexity, args["username"].(string), args["email"].(string), args["password"].(string)), true
+
+	case "Mutation.removeResourcePublicAccess":
+		if e.complexity.Mutation.RemoveResourcePublicAccess == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeResourcePublicAccess_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveResourcePublicAccess(childComplexity, args["resourceId"].(string)), true
 
 	case "Mutation.removeTagFromResource":
 		if e.complexity.Mutation.RemoveTagFromResource == nil {
@@ -871,6 +913,7 @@ type Tag {
 interface Resource {
   id: ID!
   name: String!
+  isPublic: Boolean!
   owner: User!
   parent: Folder # Parent is always a folder or null if root
   createdAt: String!
@@ -886,6 +929,7 @@ type Folder implements Resource {
   # Fields from the Resource interface
   id: ID!
   name: String!
+  isPublic: Boolean!
   owner: User!
   parent: Folder
   createdAt: String!
@@ -905,6 +949,7 @@ type File implements Resource {
   # Fields from the Resource interface
   id: ID!
   name: String!
+  isPublic: Boolean!
   owner: User!
   parent: Folder
   createdAt: String!
@@ -947,58 +992,39 @@ type UserResources {
 
 # The entry point for all read operations.
 type Query {
-  # Get the currently authenticated user's profile.
   me: User
-
-  # --- NEW: Specific queries for files and folders ---
-  # Get a single file by its ID.
   file(id: ID!): File
-  # Get a single folder by its ID.
   folder(id: ID!): Folder
-  # NEW: Resolves a share token to a resource, performing an auth check.
   resolveShareLink(token: String!, expectedType: String!): Resource
-  # Get the contents of a specific folder.
-  # If folderId is null, it returns the user's root-level resources.
   resources(folderId: ID): [Resource!]!
-  # Search for resources based on a variety of criteria
-  # limit and offset are for pagination
-  # e.g - first page shows first 25 items, 2nd page shows next 25, and so on..
   searchResources(
     filters: SearchFilters!
     offset: Int = 0
     limit: Int = 25
   ): [Resource!]!
-  #Admin functionality to view all resources by users
   allResources: [UserResources!]!
 }
 
 # The entry point for all write/change operations.
 type Mutation {
-  # --- User management ---
   register(username: String!, email: String!, password: String!): AuthPayload!
   login(email: String!, password: String!): AuthPayload!
-
-  # --- File and Folder creation ---
   uploadFile(file: Upload!, parentId: ID): File!
   createFolder(name: String!, parentId: ID): Folder!
-
-  # --- NEW: Specific mutations for files ---
   renameFile(id: ID!, newName: String!): File!
   deleteFile(id: ID!): Boolean!
   moveFile(fileId: ID!, newParentId: ID): File!
-
-  # --- NEW: Specific mutations for folders ---
   renameFolder(id: ID!, newName: String!): Folder!
   deleteFolder(id: ID!): Boolean!
   moveFolder(folderId: ID!, newParentId: ID): Folder!
-
-  # --- Sharing and permissions (still generic) ---
   grantPermission(resourceId: ID!, email: String!, role: Role!): Resource!
   revokePermission(resourceId: ID!, email: String!): Resource!
-
-  # --- Tagging Files and Folders for efficient search
   addTagToResource(resourceID: ID!, tagName: String!): Resource!
   removeTagFromResource(resourceID: ID!, tagID: ID!): Resource!
+
+  # --- Public Sharing ---
+  makeResourcePublic(resourceId: ID!): Resource!
+  removeResourcePublicAccess(resourceId: ID!): Resource!
 }
 `, BuiltIn: false},
 }

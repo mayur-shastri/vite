@@ -23,13 +23,6 @@ func DownloadFileHandler(db *gorm.DB, permissionRepo permission.Repository) http
 			return
 		}
 
-		// 2. Get user ID from context (populated by AuthMiddleware)
-		userID, ok := r.Context().Value(middleware.UserContextKey).(uint)
-		if !ok {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-
 		// 3. Fetch resource with PhysicalFile
 		var resource database.Resource
 		if err := db.WithContext(r.Context()).
@@ -38,17 +31,6 @@ func DownloadFileHandler(db *gorm.DB, permissionRepo permission.Repository) http
 			First(&resource).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				http.Error(w, "resource not found", http.StatusNotFound)
-				return
-			}
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		// 4. Check user permission
-		_, err = permissionRepo.FindPermission(resource.ID, userID)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				http.Error(w, "access denied", http.StatusForbidden)
 				return
 			}
 			http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -64,6 +46,33 @@ func DownloadFileHandler(db *gorm.DB, permissionRepo permission.Repository) http
 		filePath := resource.PhysicalFile.FilePath
 		mimeType := resource.PhysicalFile.MimeType
 		filename := resource.Name
+
+		if resource.IsPublic {
+			// 6. Stream the file like res.sendFile
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+			w.Header().Set("Content-Type", mimeType)
+			http.ServeFile(w, r, filePath)
+			return
+		}
+
+		// 2. Get user ID from context (populated by AuthMiddleware)
+		userID, ok := r.Context().Value(middleware.UserContextKey).(uint)
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// 4. Check user permission
+		_, err = permissionRepo.FindPermission(resource.ID, userID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				http.Error(w, "access denied", http.StatusForbidden)
+				return
+			}
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
 
 		// 6. Stream the file like res.sendFile
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))

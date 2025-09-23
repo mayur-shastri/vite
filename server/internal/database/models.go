@@ -55,6 +55,7 @@ type Resource struct {
 	ParentID       *uint         `gorm:"index"` // Indexed for performance
 	Parent         *Resource     `gorm:"foreignKey:ParentID;constraint:OnDelete:CASCADE;"`
 	Name           string        `gorm:"size:255;not null;index"`
+	IsPublic       bool          `gorm:"default:false;not null;index"`
 	ShareToken     *string       `gorm:"size:255;uniqueIndex"`
 	Type           ResourceType  `gorm:"type:varchar(50);not null;index"` // Explicit type
 	PhysicalFileID *uint         `gorm:"index"`

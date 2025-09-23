@@ -20,6 +20,7 @@ import (
 	"github.com/bhavyajaix/BalkanID-filevault/internal/search"
 	"github.com/bhavyajaix/BalkanID-filevault/pkg/auth"
 	"github.com/bhavyajaix/BalkanID-filevault/pkg/utils"
+	"gorm.io/gorm"
 )
 
 func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
@@ -54,6 +55,7 @@ func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
 		return &model.Folder{
 			ID:         fmt.Sprint(dbRes.ID),
 			Name:       dbRes.Name,
+			IsPublic:   dbRes.IsPublic,
 			Owner:      owner,
 			CreatedAt:  dbRes.CreatedAt.String(),
 			UpdatedAt:  dbRes.UpdatedAt.String(),
@@ -73,6 +75,7 @@ func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
 		return &model.File{
 			ID:         fmt.Sprint(dbRes.ID),
 			Name:       dbRes.Name,
+			IsPublic:   dbRes.IsPublic,
 			Owner:      owner,
 			CreatedAt:  dbRes.CreatedAt.String(),
 			UpdatedAt:  dbRes.UpdatedAt.String(),
@@ -110,6 +113,7 @@ func toGqlPermission(dbRes *database.Resource) (model.Resource, error) {
 		folder := &model.Folder{
 			ID:         fmt.Sprint(dbRes.ID),
 			Name:       dbRes.Name,
+			IsPublic:   dbRes.IsPublic,
 			Owner:      owner,
 			CreatedAt:  dbRes.CreatedAt.String(),
 			UpdatedAt:  dbRes.UpdatedAt.String(),
@@ -124,6 +128,7 @@ func toGqlPermission(dbRes *database.Resource) (model.Resource, error) {
 		file := &model.File{
 			ID:         fmt.Sprint(dbRes.ID),
 			Name:       dbRes.Name,
+			IsPublic:   dbRes.IsPublic,
 			Owner:      owner,
 			CreatedAt:  dbRes.CreatedAt.String(),
 			UpdatedAt:  dbRes.UpdatedAt.String(),
@@ -495,6 +500,74 @@ func (r *mutationResolver) RemoveTagFromResource(ctx context.Context, resourceID
 	return gqlResource, nil
 }
 
+// MakeResourcePublic is the resolver for the makeResourcePublic field.
+func (r *mutationResolver) MakeResourcePublic(ctx context.Context, resourceID string) (model.Resource, error) {
+	// 1. Get current user ID from context
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Parse resource ID
+	resID, err := utils.StringToUint(resourceID)
+	if err != nil {
+		return nil, errors.New("invalid resourceId format")
+	}
+
+	// 3. Fetch the resource from the database
+	var resource database.Resource
+	if err := r.DB.First(&resource, resID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("resource not found")
+		}
+		return nil, fmt.Errorf("failed to fetch resource: %w", err)
+	}
+
+	// 4. Authorization: Check if the current user is the owner
+	if resource.OwnerID != userID {
+		return nil, errors.New("access denied: only the owner can change the public status")
+	}
+
+	// 5. Update the IsPublic field and save to the database
+	if err := r.DB.Model(&resource).Update("is_public", true).Error; err != nil {
+		return nil, fmt.Errorf("failed to update resource public status: %w", err)
+	}
+
+	// 6. Re-fetch the resource with preloaded data to ensure the response is complete
+	var updatedResource database.Resource
+	if err := r.DB.Preload("User").Preload("PhysicalFile").Preload("Children").First(&updatedResource, resID).Error; err != nil {
+		return nil, fmt.Errorf("failed to re-fetch updated resource: %w", err)
+	}
+
+	// 7. Convert to GraphQL model and return
+	return toGqlResource(&updatedResource)
+}
+
+// RemoveResourcePublicAccess is the resolver for the removeResourcePublicAccess field.
+func (r *mutationResolver) RemoveResourcePublicAccess(ctx context.Context, resourceID string) (model.Resource, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	resID, err := utils.StringToUint(resourceID)
+	if err != nil {
+		return nil, errors.New("invalid resourceId format")
+	}
+
+	var resource database.Resource
+	if err := r.DB.First(&resource, resID).Error; err != nil {
+		return nil, errors.New("resource not found")
+	}
+
+	if resource.OwnerID != userID {
+		return nil, errors.New("access denied: only the owner can change the public status")
+	}
+
+	r.DB.Model(&resource).Update("is_public", false)
+	return toGqlResource(&resource)
+}
+
 // Me is the resolver for the me field. (Unchanged)
 func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
 	userID, ok := ctx.Value(middleware.UserContextKey).(uint)
@@ -689,134 +762,3 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
-	if dbRes == nil {
-		return nil, errors.New("cannot convert nil resource")
-	}
-
-	owner := &model.User{
-		ID:                       fmt.Sprint(dbRes.User.ID),
-		Username:                 dbRes.User.Username,
-		Email:                    dbRes.User.Email,
-		StorageUsed:              dbRes.User.StorageUsed,
-		DeduplicationStorageUsed: dbRes.User.DeduplicationStorageUsed,
-	}
-
-	shareToken := ""
-	if dbRes.ShareToken != nil {
-		shareToken = *dbRes.ShareToken
-	}
-
-	switch dbRes.Type {
-	case database.Folder:
-		gqlChildren := make([]model.Resource, 0, len(dbRes.Children))
-		for _, child := range dbRes.Children {
-			gqlChild, err := toGqlResource(&child)
-			if err != nil {
-				// Optionally log the error, but continue conversion for other children
-				continue
-			}
-			gqlChildren = append(gqlChildren, gqlChild)
-		}
-		return &model.Folder{
-			ID:         fmt.Sprint(dbRes.ID),
-			Name:       dbRes.Name,
-			Owner:      owner,
-			CreatedAt:  dbRes.CreatedAt.String(),
-			UpdatedAt:  dbRes.UpdatedAt.String(),
-			ShareToken: shareToken,
-			Children:   gqlChildren,
-			Type:       string(dbRes.Type),
-		}, nil
-
-	case database.File:
-		sizeBytes := 0
-		mimeType := ""
-		if dbRes.PhysicalFile != nil {
-			sizeBytes = int(dbRes.PhysicalFile.SizeBytes)
-			mimeType = string(dbRes.PhysicalFile.MimeType)
-		}
-
-		return &model.File{
-			ID:         fmt.Sprint(dbRes.ID),
-			Name:       dbRes.Name,
-			Owner:      owner,
-			CreatedAt:  dbRes.CreatedAt.String(),
-			UpdatedAt:  dbRes.UpdatedAt.String(),
-			Type:       string(dbRes.Type),
-			SizeBytes:  sizeBytes,
-			MimeType:   mimeType,
-			ShareToken: shareToken,
-		}, nil
-
-	default:
-		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
-	}
-}
-func toGqlPermission(dbRes *database.Resource) (model.Resource, error) {
-	if dbRes == nil {
-		return nil, errors.New("cannot convert nil resource")
-	}
-
-	owner := &model.User{
-		ID:                       fmt.Sprint(dbRes.User.ID),
-		Username:                 dbRes.User.Username,
-		Email:                    dbRes.User.Email,
-		Role:                     dbRes.User.Role,
-		StorageUsed:              dbRes.User.StorageUsed,
-		DeduplicationStorageUsed: dbRes.User.DeduplicationStorageUsed,
-	}
-
-	var shareToken string
-	if dbRes.ShareToken != nil {
-		shareToken = *dbRes.ShareToken
-	}
-
-	switch dbRes.Type {
-	case database.Folder:
-		folder := &model.Folder{
-			ID:         fmt.Sprint(dbRes.ID),
-			Name:       dbRes.Name,
-			Owner:      owner,
-			CreatedAt:  dbRes.CreatedAt.String(),
-			UpdatedAt:  dbRes.UpdatedAt.String(),
-			Type:       string(dbRes.Type),
-			ShareToken: shareToken,
-		}
-		return folder, nil
-	case database.File:
-		if dbRes.PhysicalFile == nil {
-			return nil, fmt.Errorf("physical file data not preloaded for resource ID %d", dbRes.ID)
-		}
-		file := &model.File{
-			ID:         fmt.Sprint(dbRes.ID),
-			Name:       dbRes.Name,
-			Owner:      owner,
-			CreatedAt:  dbRes.CreatedAt.String(),
-			UpdatedAt:  dbRes.UpdatedAt.String(),
-			Type:       string(dbRes.Type),
-			ShareToken: shareToken,
-			SizeBytes:  int(dbRes.PhysicalFile.SizeBytes),
-			MimeType:   string(dbRes.PhysicalFile.MimeType),
-		}
-		return file, nil
-	default:
-		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
-	}
-}
-func getUserIDFromContext(ctx context.Context) (uint, error) {
-	userID, ok := ctx.Value(middleware.UserContextKey).(uint)
-	if !ok {
-		return 0, errors.New("unauthorized: access denied")
-	}
-	return userID, nil
-}
-*/

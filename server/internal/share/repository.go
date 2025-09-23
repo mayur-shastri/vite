@@ -48,6 +48,11 @@ func (r *repository) FindResourceByTokenAndUserAccess(ctx context.Context, token
 		return nil, err
 	}
 
+	// 1.1 If resource is public, don't check for permissions
+	if resource.IsPublic {
+		return &resource, nil
+	}
+
 	// 2. Check for direct permission on the resource itself
 	var directPermissionCount int64
 	if err := r.db.Model(&database.Permission{}).

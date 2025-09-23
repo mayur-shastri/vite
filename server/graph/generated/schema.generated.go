@@ -32,6 +32,8 @@ type MutationResolver interface {
 	RevokePermission(ctx context.Context, resourceID string, email string) (model.Resource, error)
 	AddTagToResource(ctx context.Context, resourceID string, tagName string) (model.Resource, error)
 	RemoveTagFromResource(ctx context.Context, resourceID string, tagID string) (model.Resource, error)
+	MakeResourcePublic(ctx context.Context, resourceID string) (model.Resource, error)
+	RemoveResourcePublicAccess(ctx context.Context, resourceID string) (model.Resource, error)
 }
 type QueryResolver interface {
 	Me(ctx context.Context) (*model.User, error)
@@ -138,6 +140,17 @@ func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawAr
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_makeResourcePublic_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "resourceId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["resourceId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_moveFile_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -188,6 +201,17 @@ func (ec *executionContext) field_Mutation_register_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["password"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeResourcePublicAccess_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "resourceId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["resourceId"] = arg0
 	return args, nil
 }
 
@@ -490,6 +514,35 @@ func (ec *executionContext) fieldContext_File_name(_ context.Context, field grap
 	return fc, nil
 }
 
+func (ec *executionContext) _File_isPublic(ctx context.Context, field graphql.CollectedField, obj *model.File) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_File_isPublic,
+		func(ctx context.Context) (any, error) {
+			return obj.IsPublic, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_File_isPublic(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "File",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _File_owner(ctx context.Context, field graphql.CollectedField, obj *model.File) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -561,6 +614,8 @@ func (ec *executionContext) fieldContext_File_parent(_ context.Context, field gr
 				return ec.fieldContext_Folder_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Folder_name(ctx, field)
+			case "isPublic":
+				return ec.fieldContext_Folder_isPublic(ctx, field)
 			case "owner":
 				return ec.fieldContext_Folder_owner(ctx, field)
 			case "parent":
@@ -931,6 +986,35 @@ func (ec *executionContext) fieldContext_Folder_name(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Folder_isPublic(ctx context.Context, field graphql.CollectedField, obj *model.Folder) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Folder_isPublic,
+		func(ctx context.Context) (any, error) {
+			return obj.IsPublic, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Folder_isPublic(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Folder",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Folder_owner(ctx context.Context, field graphql.CollectedField, obj *model.Folder) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1002,6 +1086,8 @@ func (ec *executionContext) fieldContext_Folder_parent(_ context.Context, field 
 				return ec.fieldContext_Folder_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Folder_name(ctx, field)
+			case "isPublic":
+				return ec.fieldContext_Folder_isPublic(ctx, field)
 			case "owner":
 				return ec.fieldContext_Folder_owner(ctx, field)
 			case "parent":
@@ -1369,6 +1455,8 @@ func (ec *executionContext) fieldContext_Mutation_uploadFile(ctx context.Context
 				return ec.fieldContext_File_id(ctx, field)
 			case "name":
 				return ec.fieldContext_File_name(ctx, field)
+			case "isPublic":
+				return ec.fieldContext_File_isPublic(ctx, field)
 			case "owner":
 				return ec.fieldContext_File_owner(ctx, field)
 			case "parent":
@@ -1438,6 +1526,8 @@ func (ec *executionContext) fieldContext_Mutation_createFolder(ctx context.Conte
 				return ec.fieldContext_Folder_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Folder_name(ctx, field)
+			case "isPublic":
+				return ec.fieldContext_Folder_isPublic(ctx, field)
 			case "owner":
 				return ec.fieldContext_Folder_owner(ctx, field)
 			case "parent":
@@ -1503,6 +1593,8 @@ func (ec *executionContext) fieldContext_Mutation_renameFile(ctx context.Context
 				return ec.fieldContext_File_id(ctx, field)
 			case "name":
 				return ec.fieldContext_File_name(ctx, field)
+			case "isPublic":
+				return ec.fieldContext_File_isPublic(ctx, field)
 			case "owner":
 				return ec.fieldContext_File_owner(ctx, field)
 			case "parent":
@@ -1613,6 +1705,8 @@ func (ec *executionContext) fieldContext_Mutation_moveFile(ctx context.Context, 
 				return ec.fieldContext_File_id(ctx, field)
 			case "name":
 				return ec.fieldContext_File_name(ctx, field)
+			case "isPublic":
+				return ec.fieldContext_File_isPublic(ctx, field)
 			case "owner":
 				return ec.fieldContext_File_owner(ctx, field)
 			case "parent":
@@ -1682,6 +1776,8 @@ func (ec *executionContext) fieldContext_Mutation_renameFolder(ctx context.Conte
 				return ec.fieldContext_Folder_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Folder_name(ctx, field)
+			case "isPublic":
+				return ec.fieldContext_Folder_isPublic(ctx, field)
 			case "owner":
 				return ec.fieldContext_Folder_owner(ctx, field)
 			case "parent":
@@ -1788,6 +1884,8 @@ func (ec *executionContext) fieldContext_Mutation_moveFolder(ctx context.Context
 				return ec.fieldContext_Folder_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Folder_name(ctx, field)
+			case "isPublic":
+				return ec.fieldContext_Folder_isPublic(ctx, field)
 			case "owner":
 				return ec.fieldContext_Folder_owner(ctx, field)
 			case "parent":
@@ -1988,6 +2086,88 @@ func (ec *executionContext) fieldContext_Mutation_removeTagFromResource(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_makeResourcePublic(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_makeResourcePublic,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().MakeResourcePublic(ctx, fc.Args["resourceId"].(string))
+		},
+		nil,
+		ec.marshalNResource2githubᚗcomᚋbhavyajaixᚋBalkanIDᚑfilevaultᚋgraphᚋmodelᚐResource,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_makeResourcePublic(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("FieldContext.Child cannot be called on type INTERFACE")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_makeResourcePublic_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeResourcePublicAccess(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_removeResourcePublicAccess,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().RemoveResourcePublicAccess(ctx, fc.Args["resourceId"].(string))
+		},
+		nil,
+		ec.marshalNResource2githubᚗcomᚋbhavyajaixᚋBalkanIDᚑfilevaultᚋgraphᚋmodelᚐResource,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeResourcePublicAccess(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("FieldContext.Child cannot be called on type INTERFACE")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeResourcePublicAccess_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Permission_user(ctx context.Context, field graphql.CollectedField, obj *model.Permission) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2132,6 +2312,8 @@ func (ec *executionContext) fieldContext_Query_file(ctx context.Context, field g
 				return ec.fieldContext_File_id(ctx, field)
 			case "name":
 				return ec.fieldContext_File_name(ctx, field)
+			case "isPublic":
+				return ec.fieldContext_File_isPublic(ctx, field)
 			case "owner":
 				return ec.fieldContext_File_owner(ctx, field)
 			case "parent":
@@ -2201,6 +2383,8 @@ func (ec *executionContext) fieldContext_Query_folder(ctx context.Context, field
 				return ec.fieldContext_Folder_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Folder_name(ctx, field)
+			case "isPublic":
+				return ec.fieldContext_Folder_isPublic(ctx, field)
 			case "owner":
 				return ec.fieldContext_Folder_owner(ctx, field)
 			case "parent":
@@ -3181,6 +3365,11 @@ func (ec *executionContext) _File(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "isPublic":
+			out.Values[i] = ec._File_isPublic(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "owner":
 			out.Values[i] = ec._File_owner(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -3271,6 +3460,11 @@ func (ec *executionContext) _Folder(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "name":
 			out.Values[i] = ec._Folder_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isPublic":
+			out.Values[i] = ec._Folder_isPublic(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -3449,6 +3643,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "removeTagFromResource":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeTagFromResource(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "makeResourcePublic":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_makeResourcePublic(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeResourcePublicAccess":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeResourcePublicAccess(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

@@ -13,6 +13,7 @@ type Resource interface {
 	IsResource()
 	GetID() string
 	GetName() string
+	GetIsPublic() bool
 	GetOwner() *User
 	GetParent() *Folder
 	GetCreatedAt() string
@@ -30,6 +31,7 @@ type AuthPayload struct {
 type File struct {
 	ID          string        `json:"id"`
 	Name        string        `json:"name"`
+	IsPublic    bool          `json:"isPublic"`
 	Owner       *User         `json:"owner"`
 	Parent      *Folder       `json:"parent,omitempty"`
 	CreatedAt   string        `json:"createdAt"`
@@ -46,6 +48,7 @@ type File struct {
 func (File) IsResource()                {}
 func (this File) GetID() string         { return this.ID }
 func (this File) GetName() string       { return this.Name }
+func (this File) GetIsPublic() bool     { return this.IsPublic }
 func (this File) GetOwner() *User       { return this.Owner }
 func (this File) GetParent() *Folder    { return this.Parent }
 func (this File) GetCreatedAt() string  { return this.CreatedAt }
@@ -75,6 +78,7 @@ func (this File) GetTags() []*Tag {
 type Folder struct {
 	ID          string        `json:"id"`
 	Name        string        `json:"name"`
+	IsPublic    bool          `json:"isPublic"`
 	Owner       *User         `json:"owner"`
 	Parent      *Folder       `json:"parent,omitempty"`
 	CreatedAt   string        `json:"createdAt"`
@@ -89,6 +93,7 @@ type Folder struct {
 func (Folder) IsResource()                {}
 func (this Folder) GetID() string         { return this.ID }
 func (this Folder) GetName() string       { return this.Name }
+func (this Folder) GetIsPublic() bool     { return this.IsPublic }
 func (this Folder) GetOwner() *User       { return this.Owner }
 func (this Folder) GetParent() *Folder    { return this.Parent }
 func (this Folder) GetCreatedAt() string  { return this.CreatedAt }
