@@ -22,47 +22,6 @@ import (
 	"github.com/bhavyajaix/BalkanID-filevault/pkg/utils"
 )
 
-// func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
-// 	if dbRes == nil {
-// 		return nil, errors.New("cannot convert nil resource")
-// 	}
-
-// 	owner := &model.User{
-// 		ID:                       fmt.Sprint(dbRes.User.ID),
-// 		Username:                 dbRes.User.Username,
-// 		Email:                    dbRes.User.Email,
-// 		StorageUsed:              dbRes.User.StorageUsed,
-// 		DeduplicationStorageUsed: dbRes.User.DeduplicationStorageUsed,
-// 	}
-
-// 	switch dbRes.Type {
-// 	case database.Folder:
-// 		return &model.Folder{
-// 			ID:         fmt.Sprint(dbRes.ID),
-// 			Name:       dbRes.Name,
-// 			Owner:      owner,
-// 			CreatedAt:  dbRes.CreatedAt.String(),
-// 			UpdatedAt:  dbRes.UpdatedAt.String(),
-// 			Type:       string(dbRes.Type),
-// 			ShareToken: string(*dbRes.ShareToken),
-// 		}, nil
-// 	case database.File:
-// 		return &model.File{
-// 			ID:         fmt.Sprint(dbRes.ID),
-// 			Name:       dbRes.Name,
-// 			Owner:      owner,
-// 			CreatedAt:  dbRes.CreatedAt.String(),
-// 			UpdatedAt:  dbRes.UpdatedAt.String(),
-// 			Type:       string(dbRes.Type),
-// 			SizeBytes:  int(dbRes.PhysicalFile.SizeBytes),
-// 			MimeType:   string(dbRes.PhysicalFile.MimeType),
-// 			ShareToken: string(*dbRes.ShareToken),
-// 		}, nil
-// 	default:
-// 		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
-// 	}
-// }
-
 func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
 	if dbRes == nil {
 		return nil, errors.New("cannot convert nil resource")
@@ -127,7 +86,6 @@ func toGqlResource(dbRes *database.Resource) (model.Resource, error) {
 		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
 	}
 }
-
 func toGqlPermission(dbRes *database.Resource) (model.Resource, error) {
 	if dbRes == nil {
 		return nil, errors.New("cannot convert nil resource")
@@ -568,8 +526,8 @@ func (r *queryResolver) Folder(ctx context.Context, id string) (*model.Folder, e
 }
 
 // ResolveShareLink is the resolver for the resolveShareLink field.
-func (r *queryResolver) ResolveShareLink(ctx context.Context, token string) (model.Resource, error) {
-	dbResource, err := r.ShareService.ResolveShareLink(ctx, token)
+func (r *queryResolver) ResolveShareLink(ctx context.Context, token string, expectedType string) (model.Resource, error) {
+	dbResource, err := r.ShareService.ResolveShareLink(ctx, token, expectedType)
 	if err != nil {
 		return nil, err
 	}
@@ -752,18 +710,41 @@ type queryResolver struct{ *Resolver }
 		DeduplicationStorageUsed: dbRes.User.DeduplicationStorageUsed,
 	}
 
+	shareToken := ""
+	if dbRes.ShareToken != nil {
+		shareToken = *dbRes.ShareToken
+	}
+
 	switch dbRes.Type {
 	case database.Folder:
+		gqlChildren := make([]model.Resource, 0, len(dbRes.Children))
+		for _, child := range dbRes.Children {
+			gqlChild, err := toGqlResource(&child)
+			if err != nil {
+				// Optionally log the error, but continue conversion for other children
+				continue
+			}
+			gqlChildren = append(gqlChildren, gqlChild)
+		}
 		return &model.Folder{
 			ID:         fmt.Sprint(dbRes.ID),
 			Name:       dbRes.Name,
 			Owner:      owner,
 			CreatedAt:  dbRes.CreatedAt.String(),
 			UpdatedAt:  dbRes.UpdatedAt.String(),
+			ShareToken: shareToken,
+			Children:   gqlChildren,
 			Type:       string(dbRes.Type),
-			ShareToken: string(*dbRes.ShareToken),
 		}, nil
+
 	case database.File:
+		sizeBytes := 0
+		mimeType := ""
+		if dbRes.PhysicalFile != nil {
+			sizeBytes = int(dbRes.PhysicalFile.SizeBytes)
+			mimeType = string(dbRes.PhysicalFile.MimeType)
+		}
+
 		return &model.File{
 			ID:         fmt.Sprint(dbRes.ID),
 			Name:       dbRes.Name,
@@ -771,10 +752,11 @@ type queryResolver struct{ *Resolver }
 			CreatedAt:  dbRes.CreatedAt.String(),
 			UpdatedAt:  dbRes.UpdatedAt.String(),
 			Type:       string(dbRes.Type),
-			SizeBytes:  int(dbRes.PhysicalFile.SizeBytes),
-			MimeType:   string(dbRes.PhysicalFile.MimeType),
-			ShareToken: string(*dbRes.ShareToken),
+			SizeBytes:  sizeBytes,
+			MimeType:   mimeType,
+			ShareToken: shareToken,
 		}, nil
+
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", dbRes.Type)
 	}

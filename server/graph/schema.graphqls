@@ -134,7 +134,7 @@ type Query {
   # Get a single folder by its ID.
   folder(id: ID!): Folder
   # NEW: Resolves a share token to a resource, performing an auth check.
-  resolveShareLink(token: String!): Resource
+  resolveShareLink(token: String!, expectedType: String!): Resource
   # Get the contents of a specific folder.
   # If folderId is null, it returns the user's root-level resources.
   resources(folderId: ID): [Resource!]!

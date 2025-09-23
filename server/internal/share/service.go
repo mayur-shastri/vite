@@ -15,7 +15,7 @@ import (
 
 // Service now returns the database model, not the GraphQL model.
 type Service interface {
-	ResolveShareLink(ctx context.Context, token string) (*database.Resource, error)
+	ResolveShareLink(ctx context.Context, token string, expectedType string) (*database.Resource, error)
 }
 
 type service struct {
@@ -35,8 +35,8 @@ func NewService(repo Repository, folderRepo folders.Repository, fileRepo file.Re
 }
 
 // ResolveShareLink's signature is updated to return *database.Resource.
-func (s *service) ResolveShareLink(ctx context.Context, token string) (*database.Resource, error) {
-	dbResource, err := s.repo.FindResourceByTokenAndUserAccess(ctx, token)
+func (s *service) ResolveShareLink(ctx context.Context, token string, expectedType string) (*database.Resource, error) {
+	dbResource, err := s.repo.FindResourceByTokenAndUserAccess(ctx, token, expectedType)
 	if err != nil {
 		return nil, err
 	}

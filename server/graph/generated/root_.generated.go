@@ -103,7 +103,7 @@ type ComplexityRoot struct {
 		File             func(childComplexity int, id string) int
 		Folder           func(childComplexity int, id string) int
 		Me               func(childComplexity int) int
-		ResolveShareLink func(childComplexity int, token string) int
+		ResolveShareLink func(childComplexity int, token string, expectedType string) int
 		Resources        func(childComplexity int, folderID *string) int
 		SearchResources  func(childComplexity int, filters model.SearchFilters, offset *int, limit *int) int
 	}
@@ -569,7 +569,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.ResolveShareLink(childComplexity, args["token"].(string)), true
+		return e.complexity.Query.ResolveShareLink(childComplexity, args["token"].(string), args["expectedType"].(string)), true
 
 	case "Query.resources":
 		if e.complexity.Query.Resources == nil {
@@ -956,7 +956,7 @@ type Query {
   # Get a single folder by its ID.
   folder(id: ID!): Folder
   # NEW: Resolves a share token to a resource, performing an auth check.
-  resolveShareLink(token: String!): Resource
+  resolveShareLink(token: String!, expectedType: String!): Resource
   # Get the contents of a specific folder.
   # If folderId is null, it returns the user's root-level resources.
   resources(folderId: ID): [Resource!]!

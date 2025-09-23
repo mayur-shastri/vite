@@ -20,7 +20,7 @@ func getUserIDFromContext(ctx context.Context) (uint, error) {
 
 // Repository defines the interface for share-related database operations.
 type Repository interface {
-	FindResourceByTokenAndUserAccess(ctx context.Context, token string) (*database.Resource, error)
+	FindResourceByTokenAndUserAccess(ctx context.Context, token string, expectedType string) (*database.Resource, error)
 }
 
 type repository struct {
@@ -32,14 +32,14 @@ func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
 
-func (r *repository) FindResourceByTokenAndUserAccess(ctx context.Context, token string) (*database.Resource, error) {
+func (r *repository) FindResourceByTokenAndUserAccess(ctx context.Context, token string, expectedType string) (*database.Resource, error) {
 	// 1. Find the resource using the share token
 	var resource database.Resource
 	userID, _ := getUserIDFromContext(ctx)
 	if err := r.db.WithContext(ctx).
 		Preload("User").
 		Preload("PhysicalFile").
-		Where("share_token = ?", token).
+		Where("share_token = ? AND type = ?", token, expectedType).
 		First(&resource).Error; err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {

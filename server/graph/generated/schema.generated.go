@@ -37,7 +37,7 @@ type QueryResolver interface {
 	Me(ctx context.Context) (*model.User, error)
 	File(ctx context.Context, id string) (*model.File, error)
 	Folder(ctx context.Context, id string) (*model.Folder, error)
-	ResolveShareLink(ctx context.Context, token string) (model.Resource, error)
+	ResolveShareLink(ctx context.Context, token string, expectedType string) (model.Resource, error)
 	Resources(ctx context.Context, folderID *string) ([]model.Resource, error)
 	SearchResources(ctx context.Context, filters model.SearchFilters, offset *int, limit *int) ([]model.Resource, error)
 	AllResources(ctx context.Context) ([]*model.UserResources, error)
@@ -312,6 +312,11 @@ func (ec *executionContext) field_Query_resolveShareLink_args(ctx context.Contex
 		return nil, err
 	}
 	args["token"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "expectedType", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["expectedType"] = arg1
 	return args, nil
 }
 
@@ -2240,7 +2245,7 @@ func (ec *executionContext) _Query_resolveShareLink(ctx context.Context, field g
 		ec.fieldContext_Query_resolveShareLink,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().ResolveShareLink(ctx, fc.Args["token"].(string))
+			return ec.resolvers.Query().ResolveShareLink(ctx, fc.Args["token"].(string), fc.Args["expectedType"].(string))
 		},
 		nil,
 		ec.marshalOResource2githubᚗcomᚋbhavyajaixᚋBalkanIDᚑfilevaultᚋgraphᚋmodelᚐResource,
