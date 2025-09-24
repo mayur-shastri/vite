@@ -86,5 +86,21 @@ func (r *repository) FindResourceByTokenAndUserAccess(ctx context.Context, token
 	}
 
 	// If we reach here, the user has no direct or inherited permission
+	// 4. Final check: See if access is granted via a public ancestor folder
+	var publicAncestorCount int64
+	// Re-use the subquery to find all ancestors
+	if err := r.db.Model(&database.Resource{}).
+		Where("id IN (?) AND is_public = ?", subQuery, true).
+		Count(&publicAncestorCount).Error; err != nil {
+		// This is an internal query error, not an access error
+		return nil, err
+	}
+
+	if publicAncestorCount > 0 {
+		// Access is granted because a parent folder is public
+		return &resource, nil
+	}
+
+	// If all checks fail, deny access
 	return nil, errors.New("access denied")
 }
