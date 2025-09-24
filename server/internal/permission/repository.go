@@ -36,6 +36,15 @@ func (r *repository) Delete(resourceID, userID uint) error {
 
 func (r *repository) FindPermission(resourceID, userID uint) (*database.Permission, error) {
 	var permission database.Permission
-	err := r.db.Where("resource_id = ? AND user_id = ?", resourceID, userID).First(&permission).Error
+
+	subQuery := r.db.Model(&database.ResourceAncestor{}).
+		Select("ancestor_id").
+		Where("descendant_id = ?", resourceID)
+
+	// Check permission on resource itself OR any ancestor
+	err := r.db.Where("(resource_id = ? OR resource_id IN (?)) AND user_id = ?", resourceID, subQuery, userID).
+		First(&permission).Error
+
 	return &permission, err
 }
+
