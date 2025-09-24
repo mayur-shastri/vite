@@ -154,6 +154,8 @@ func DownloadFileHandler(db *gorm.DB, permissionRepo permission.Repository) http
             }
         }
 
+		fmt.Println("**********", isPubliclyAccessible);
+
         if isPubliclyAccessible {
             // 6. Stream the file
             w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
