@@ -29,7 +29,7 @@ import (
 	"github.com/bhavyajaix/BalkanID-filevault/internal/user"
 )
 
-const defaultPort = "8080"
+const defaultPort = "4007"
 
 func createRateLimiter() func(http.Handler) http.Handler {
 	lmt := tollbooth.NewLimiter(2, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour})

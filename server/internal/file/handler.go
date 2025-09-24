@@ -47,7 +47,24 @@ func DownloadFileHandler(db *gorm.DB, permissionRepo permission.Repository) http
 		mimeType := resource.PhysicalFile.MimeType
 		filename := resource.Name
 
-		if resource.IsPublic {
+		// Check if the resource itself is public or if any of its ancestors are public.
+		isPubliclyAccessible := resource.IsPublic
+		if !isPubliclyAccessible {
+			var publicAncestorCount int64
+			subQuery := db.Model(&database.ResourceAncestor{}).Select("ancestor_id").Where("descendant_id = ?", resource.ID)
+			if err := db.Model(&database.Resource{}).
+				Where("id IN (?) AND is_public = ?", subQuery, true).
+				Count(&publicAncestorCount).Error; err != nil {
+				// This is an internal query error, not an access error
+				http.Error(w, "internal server error while checking public access", http.StatusInternalServerError)
+				return
+			}
+			if publicAncestorCount > 0 {
+				isPubliclyAccessible = true
+			}
+		}
+
+		if isPubliclyAccessible {
 			// 6. Stream the file like res.sendFile
 			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 			w.Header().Set("Content-Type", mimeType)
@@ -73,6 +90,7 @@ func DownloadFileHandler(db *gorm.DB, permissionRepo permission.Repository) http
 			return
 		}
 
+		// If we reach here, the user has permission (either direct or via a public ancestor)
 
 		// 6. Stream the file like res.sendFile
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
