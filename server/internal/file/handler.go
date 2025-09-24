@@ -133,6 +133,9 @@ func DownloadFileHandler(db *gorm.DB, permissionRepo permission.Repository) http
         mimeType := resource.PhysicalFile.MimeType
         filename := resource.Name
 
+		fmt.Println("**********CHECK1**********");
+
+
         // Check if the resource itself is public or if any of its ancestors are public.
         isPubliclyAccessible := resource.IsPublic
         if !isPubliclyAccessible {
@@ -154,7 +157,7 @@ func DownloadFileHandler(db *gorm.DB, permissionRepo permission.Repository) http
             }
         }
 
-		fmt.Println("**********", isPubliclyAccessible);
+		fmt.Println("**********CHECK2**********", isPubliclyAccessible);
 
         if isPubliclyAccessible {
             // 6. Stream the file
@@ -163,6 +166,8 @@ func DownloadFileHandler(db *gorm.DB, permissionRepo permission.Repository) http
             http.ServeFile(w, r, filePath)
             return
         }
+
+		fmt.Println("**********CHECK3**********");
 
         // 2. Get user ID from context (populated by AuthMiddleware)
         userIDVal := r.Context().Value(middleware.UserContextKey)
